@@ -210,7 +210,18 @@ class HgncService:
                         "replaced_by": exc.replaced_by,
                     }
                 )
-            except (NotFoundError, AmbiguousQueryError, InvalidInputError) as exc:
+            except AmbiguousQueryError as exc:
+                results.append(
+                    {
+                        "query": query,
+                        "hgnc_id": None,
+                        "ambiguous": True,
+                        "candidate_count": len(exc.candidates),
+                        "candidates": [shape_summary(c, mode) for c in exc.candidates],
+                        "note": str(exc),
+                    }
+                )
+            except (NotFoundError, InvalidInputError) as exc:
                 results.append(
                     {"query": query, "hgnc_id": None, "unresolved": True, "reason": str(exc)}
                 )

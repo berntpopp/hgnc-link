@@ -137,6 +137,15 @@ def test_resolve_batch(service: HgncService) -> None:
         service.resolve_batch([])
 
 
+def test_resolve_batch_ambiguous_inline(service: HgncService) -> None:
+    out = service.resolve_batch(["BRAF", "DUPE"])
+    entry = {r["query"]: r for r in out["results"]}["DUPE"]
+    assert entry["ambiguous"] is True
+    assert entry["candidate_count"] == 2
+    assert entry["hgnc_id"] is None
+    assert out["resolved_count"] == 1
+
+
 def test_diagnostics(service: HgncService) -> None:
     d = service.get_diagnostics()
     assert d["data_available"] is True
