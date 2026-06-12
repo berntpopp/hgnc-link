@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from hgnc_link.services.shaping import RESPONSE_MODES, shape_gene, shape_summary
+from hgnc_link.services.shaping import (
+    RESPONSE_MODES,
+    shape_gene,
+    shape_resolution,
+    shape_summary,
+)
 
 
 def _gene() -> dict[str, object]:
@@ -56,6 +61,29 @@ def test_minimal_keeps_only_core() -> None:
         }
     )
     assert "date_modified" not in out
+
+
+def test_shape_resolution_modes() -> None:
+    rec = {
+        "query": "x",
+        "hgnc_id": "HGNC:1",
+        "approved_symbol": "S",
+        "name": "n",
+        "status": "Approved",
+        "locus_type": "t",
+        "location": "1p",
+        "match_type": "current",
+        "ambiguous": False,
+    }
+    assert set(shape_resolution(rec, "minimal")) == {
+        "query",
+        "hgnc_id",
+        "approved_symbol",
+        "match_type",
+    }
+    assert "name" in shape_resolution(rec, "compact")
+    assert shape_resolution(rec, "full") == rec
+    assert "candidates" not in shape_resolution(rec, "compact")
 
 
 def test_shape_summary_modes() -> None:

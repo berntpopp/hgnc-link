@@ -54,6 +54,25 @@ _GENE_KEEP_MINIMAL: frozenset[str] = frozenset(
 
 _PRESERVE_KEYS: frozenset[str] = frozenset({"_meta", "success"})
 
+# Fields kept in minimal mode for a resolve_symbol success payload.
+_RESOLUTION_MINIMAL: frozenset[str] = frozenset(
+    {"query", "hgnc_id", "approved_symbol", "match_type"}
+)
+
+
+def shape_resolution(record: dict[str, Any], mode: str) -> dict[str, Any]:
+    """Project a resolve_symbol success payload to the requested verbosity.
+
+    ``standard``/``full`` are the identity; ``minimal`` keeps only the identity
+    anchors; ``compact`` (default) drops null/empty values. The payload never
+    carries a ``candidates`` array on success (ambiguity is a separate error).
+    """
+    if mode == "minimal":
+        return {k: v for k, v in record.items() if k in _RESOLUTION_MINIMAL}
+    if mode in ("standard", "full"):
+        return record
+    return {k: v for k, v in record.items() if v is not None and v != [] and v != ""}
+
 
 def shape_gene(record: dict[str, Any], mode: str) -> dict[str, Any]:
     """Project a flat gene-record payload to the requested verbosity."""

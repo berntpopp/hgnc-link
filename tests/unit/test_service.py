@@ -27,6 +27,21 @@ def test_resolve_alias_and_previous(service: HgncService) -> None:
     assert r["match_type"] == "alias"
 
 
+def test_resolve_no_candidates_and_modes(service: HgncService) -> None:
+    r = service.resolve("BRAF", "compact")
+    assert "candidates" not in r and "candidate_count" not in r
+    m = service.resolve("BRAF", "minimal")
+    assert set(m) == {"query", "hgnc_id", "approved_symbol", "match_type"}
+
+
+def test_resolve_other_matches_cross_tier(service: HgncService) -> None:
+    r = service.resolve("CROSS")  # previous of XTIER, alias of AMBA
+    assert r["approved_symbol"] == "XTIER"
+    assert r["match_type"] == "previous"
+    others = {o["symbol"] for o in r.get("other_matches", [])}
+    assert "AMBA" in others
+
+
 def test_resolve_by_id_both_forms(service: HgncService) -> None:
     assert service.resolve("HGNC:1097")["approved_symbol"] == "BRAF"
     assert service.resolve("1097")["approved_symbol"] == "BRAF"

@@ -19,7 +19,7 @@ from hgnc_link.exceptions import (
     WithdrawnEntryError,
 )
 from hgnc_link.identifiers import normalize_hgnc_id
-from hgnc_link.services.shaping import shape_gene, shape_summary
+from hgnc_link.services.shaping import shape_gene, shape_resolution, shape_summary
 
 if TYPE_CHECKING:
     from hgnc_link.api.client import HgncRestClient
@@ -85,7 +85,7 @@ class HgncService:
 
         hgnc_id = normalize_hgnc_id(raw)
         if hgnc_id:
-            return self._resolve_id(raw, hgnc_id)
+            return self._resolve_id(raw, hgnc_id, mode)
 
         pairs = self.repo.lookup_symbol(raw)
         if pairs:
@@ -94,10 +94,10 @@ class HgncService:
         self._raise_for_withdrawn_symbol(raw)
         raise NotFoundError(f"No HGNC record matches '{raw}'.")
 
-    def _resolve_id(self, raw: str, hgnc_id: str) -> dict[str, Any]:
+    def _resolve_id(self, raw: str, hgnc_id: str, mode: str) -> dict[str, Any]:
         gene = self.repo.get_gene(hgnc_id)
         if gene is not None:
-            return self._resolution(raw, gene, "hgnc_id", candidates=[_brief(gene, "current")])
+            return self._resolution(raw, gene, "hgnc_id", mode=mode)
         withdrawn = self.repo.get_withdrawn(hgnc_id)
         if withdrawn is not None:
             raise WithdrawnEntryError(
@@ -124,14 +124,21 @@ class HgncService:
         best = [p for p in pairs if p[1] == best_type]
         if len(best) > 1:
             raise self._ambiguity_error(raw, best_type, best)
-        candidates = [
-            _brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, stype)
-            for hid, stype in pairs[:_MAX_CANDIDATES]
-        ]
         gene = self.repo.get_gene(best[0][0])
         if gene is None:  # pragma: no cover - index integrity
             raise NotFoundError(f"No HGNC record for {best[0][0]}.")
-        return self._resolution(raw, gene, best_type, candidates=candidates)
+        # Lower-tier matches point at *other* genes the caller might have meant
+        # (e.g. a previous-symbol hit that is also an alias of a different gene).
+        seen = {gene.get("hgnc_id")}
+        others: list[dict[str, Any]] = []
+        for hid, stype in pairs:
+            if hid in seen:
+                continue
+            seen.add(hid)
+            others.append(_brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, stype))
+            if len(others) >= _MAX_CANDIDATES:
+                break
+        return self._resolution(raw, gene, best_type, other_matches=others, mode=mode)
 
     def _resolution(
         self,
@@ -139,9 +146,10 @@ class HgncService:
         gene: dict[str, Any],
         match_type: str,
         *,
-        candidates: list[dict[str, Any]],
+        other_matches: list[dict[str, Any]] | None = None,
+        mode: str = "compact",
     ) -> dict[str, Any]:
-        return {
+        record: dict[str, Any] = {
             "query": raw,
             "hgnc_id": gene.get("hgnc_id"),
             "approved_symbol": gene.get("symbol"),
@@ -151,9 +159,17 @@ class HgncService:
             "location": gene.get("location"),
             "match_type": match_type,
             "ambiguous": False,
-            "candidate_count": len(candidates),
-            "candidates": candidates,
         }
+        if other_matches:
+            record["other_matches"] = [
+                {
+                    "hgnc_id": o["hgnc_id"],
+                    "symbol": o.get("symbol"),
+                    "symbol_type": o.get("symbol_type"),
+                }
+                for o in other_matches
+            ]
+        return shape_resolution(record, mode)
 
     def _raise_for_withdrawn_symbol(self, raw: str) -> None:
         withdrawn = self.repo.find_withdrawn_by_symbol(raw)
