@@ -30,10 +30,10 @@ def register_resolve_tools(mcp: FastMCP) -> None:
             "Resolve any gene symbol or HGNC id to its canonical record. Accepts a "
             "current symbol, a previous (withdrawn) symbol, an alias, or an HGNC id "
             "in either form (HGNC:1100 or 1100), case-insensitively. Returns "
-            "{hgnc_id, approved_symbol, match_type (hgnc_id|current|previous|alias)} "
-            "plus the candidate list. An alias shared by several genes is flagged "
-            "ambiguous (not silently picked); a withdrawn/merged symbol returns a "
-            "not_found error that redirects to the successor record. "
+            "{hgnc_id, approved_symbol, match_type (hgnc_id|current|previous|alias)}. "
+            "An alias shared by several genes returns an ambiguous_query error with "
+            "the candidate list (not silently picked); a withdrawn/merged symbol "
+            "returns a not_found error that redirects to the successor record. "
             "Signature: resolve_symbol(query, response_mode=)."
         ),
     )

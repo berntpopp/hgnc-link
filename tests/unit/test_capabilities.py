@@ -21,6 +21,14 @@ def test_build_capabilities_core() -> None:
     assert cap["read_only"] is True
 
 
+def test_capabilities_documents_ambiguity_contract() -> None:
+    cap = build_capabilities()
+    assert "ambiguity_contract" in cap
+    assert "batch" in cap["ambiguity_contract"].lower()
+    assert "cross_reference_filter_synonyms" in cap
+    assert "mane" in cap["cross_reference_filter_synonyms"]
+
+
 def test_project_summary_vs_full() -> None:
     sigs = {t: f"{t}()" for t in TOOLS}
     summary = project_capabilities("summary", sigs)

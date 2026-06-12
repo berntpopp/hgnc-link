@@ -15,6 +15,7 @@ from hgnc_link.constants import (
     RECOMMENDED_CITATION,
     STATUS_VALUES,
     XREF_FIELDS,
+    XREF_FILTER_ALIASES,
     XREF_SOURCE_ALIASES,
 )
 from hgnc_link.ingest.builder import read_meta
@@ -98,6 +99,7 @@ def build_capabilities() -> dict[str, Any]:
         "status_values": list(STATUS_VALUES),
         "locus_groups": list(LOCUS_GROUPS),
         "cross_reference_databases": [{"field": f, "label": label} for f, label in XREF_FIELDS],
+        "cross_reference_filter_synonyms": sorted(XREF_FILTER_ALIASES),
         "xref_lookup_sources": sorted(set(XREF_SOURCE_ALIASES.values())),
         "provenance_policy": (
             "Static provenance (research-use restriction, citation, HGNC release) "
@@ -119,6 +121,13 @@ def build_capabilities() -> dict[str, Any]:
             "withdrawn or merged symbol returns 'not_found' with obsolete:true + "
             "replaced_by + a next_command to the successor. An alias shared by "
             "several genes returns 'ambiguous_query' with the candidate list."
+        ),
+        "ambiguity_contract": (
+            "Single-result tools (resolve_symbol, get_gene, get_gene_cross_references) "
+            "return error_code 'ambiguous_query' with a candidates list and "
+            "next_commands to each candidate. resolve_symbols_batch never fails the "
+            "whole call: each ambiguous query is returned inline with ambiguous:true "
+            "+ candidates so one ambiguity never blocks the others."
         ),
         "error_codes": [
             "invalid_input",

@@ -86,9 +86,11 @@ def register_gene_tools(mcp: FastMCP) -> None:
         description=(
             "Return external database cross-references for a gene (forward identifier "
             "mapping): NCBI Gene, Ensembl, UniProt, RefSeq, MANE Select, OMIM, UCSC, "
-            "VEGA, CCDS, MGI, RGD, Orphanet, COSMIC, PubMed. Optionally filter to "
-            "specific databases. Resolve the gene from an id/symbol/alias first. "
-            "Signature: get_gene_cross_references(query, databases=, response_mode=)."
+            "VEGA, CCDS, MGI, RGD, Orphanet, COSMIC, PubMed. databases optionally "
+            "filters to specific sources by field key OR friendly label (e.g. "
+            "'mane', 'ncbi', 'uniprot'); an unknown key is rejected with "
+            "invalid_input + did-you-mean. Resolve the gene from an id/symbol/alias "
+            "first. Signature: get_gene_cross_references(query, databases=, response_mode=)."
         ),
     )
     async def get_gene_cross_references(
