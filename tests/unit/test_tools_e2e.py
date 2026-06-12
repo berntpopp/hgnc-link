@@ -125,6 +125,13 @@ async def test_batch_tool(facade: Any, structured: Any) -> None:
     assert payload["unresolved_count"] == 2
 
 
+async def test_ensembl_id_to_resolve_hints_xref(facade: Any, structured: Any) -> None:
+    payload = structured(await facade.call_tool("resolve_symbol", {"query": "ENSG00000999999"}))
+    assert payload["success"] is False
+    tools = [c["tool"] for c in payload["_meta"]["next_commands"]]
+    assert "lookup_by_xref" in tools
+
+
 async def test_resolve_ambiguous_is_structured_error(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "DUPE"}))
     assert payload["success"] is False

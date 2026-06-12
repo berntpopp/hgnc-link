@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from hgnc_link.identifiers import looks_like_hgnc_id, looks_like_symbol
+from hgnc_link.identifiers import infer_xref_source, looks_like_hgnc_id, looks_like_symbol
 
 _GENE_TOOLS = {
     "resolve_symbol",
@@ -26,6 +26,9 @@ def default_error_next_commands(
     """A sensible recovery step for any error lacking an explicit fallback."""
     if tool in ("resolve_symbol", "get_gene"):
         value = str(arguments.get("query", ""))
+        source = infer_xref_source(value)
+        if source:
+            return [cmd("lookup_by_xref", source=source, value=value), cmd("search_genes", query=value)]
         if value and looks_like_symbol(value):
             return [cmd("search_genes", query=value), cmd("get_server_capabilities")]
         if value and not looks_like_hgnc_id(value):

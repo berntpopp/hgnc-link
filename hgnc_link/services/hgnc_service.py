@@ -19,7 +19,7 @@ from hgnc_link.exceptions import (
     NotFoundError,
     WithdrawnEntryError,
 )
-from hgnc_link.identifiers import normalize_hgnc_id
+from hgnc_link.identifiers import infer_xref_source, normalize_hgnc_id
 from hgnc_link.services.shaping import shape_gene, shape_resolution, shape_summary
 
 if TYPE_CHECKING:
@@ -223,9 +223,18 @@ class HgncService:
                     }
                 )
             except (NotFoundError, InvalidInputError) as exc:
-                results.append(
-                    {"query": query, "hgnc_id": None, "unresolved": True, "reason": str(exc)}
-                )
+                entry: dict[str, Any] = {
+                    "query": query,
+                    "hgnc_id": None,
+                    "unresolved": True,
+                    "reason": str(exc),
+                }
+                source = infer_xref_source(query)
+                if source:
+                    entry["hint"] = (
+                        f"Looks like a {source} id; try lookup_by_xref(source='{source}')."
+                    )
+                results.append(entry)
         return {
             "query_count": len(queries),
             "resolved_count": resolved,
