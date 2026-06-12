@@ -7,7 +7,7 @@ Index: 44,997 genes · 5,290 withdrawn · 105,607 symbol-lookup rows · 73 MB ·
 
 | Suite | Result |
 |-------|--------|
-| Unit tests (`-m "not integration"`) | **125 passed** |
+| Unit tests (`-m "not integration"`) | **142 passed** |
 | Coverage | **87%** (gate 80%) |
 | Live integration (`-m integration`) | **4 passed** (REST fetch, prev-symbol, `/info`, full bulk build) |
 | `ruff format --check` | clean |
@@ -48,6 +48,21 @@ Index: 44,997 genes · 5,290 withdrawn · 105,607 symbol-lookup rows · 73 MB ·
 - Withdrawn/merged → `not_found` + `obsolete:true` + `replaced_by` + redirect next-command.
 - All 9 tools declare `output_schema`; structured_content + TextContent JSON both returned.
 - 6 `hgnc://` resources registered.
+
+## Assessment remediation (see `MCP-ASSESSMENT.md`)
+
+Every finding from the external LLM-consumer assessment is closed and regression-tested:
+
+| # | Finding | Resolution | Regression test |
+|---|---------|------------|-----------------|
+| 1 | `resolve_symbol` crashed on ambiguity | Returns structured `ambiguous_query` error (candidates + next_commands) | `test_resolve_ambiguous_is_structured_error` |
+| 2 | Silent `databases` filter | Friendly labels normalized; unknown keys → `invalid_input` + did-you-mean | `test_cross_references_friendly_label`, `test_cross_references_unknown_db_envelope` |
+| 3 | Misleading invalid-value errors | Range/enum surfaced (`1..200`, mode enum), not arg names | `test_limit_out_of_range_envelope`, `test_bad_response_mode_envelope` |
+| 4 | Ambiguity contract inconsistency | Single-tool error vs batch-inline; documented in `ambiguity_contract` | `test_resolve_batch_ambiguous_inline`, `test_capabilities_documents_ambiguity_contract` |
+| 5 | `response_mode` inert; redundant candidates | `shape_resolution` honors modes; candidates dropped on success | `test_resolve_no_candidates_and_modes`, `test_shape_resolution_modes` |
+| 6 | Precedence hid cross-tier intent | Lean `other_matches` surfaced | `test_resolve_other_matches_cross_tier` |
+| P1 | Empty build provenance | `git_sha`/`built_at` resolved from `.git` + Docker build args | `test_build_info_falls_back_to_git` |
+| P2 | No cross-tool xref hint | `lookup_by_xref` suggested for external ids | `test_ensembl_id_to_resolve_hints_xref`, `test_infer_xref_source` |
 
 ## Conclusion
 
