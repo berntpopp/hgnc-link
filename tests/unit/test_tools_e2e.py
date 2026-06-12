@@ -65,6 +65,17 @@ async def test_cross_references_tool(facade: Any, structured: Any) -> None:
     assert "ensembl_gene_id" in payload["cross_references"]
 
 
+async def test_cross_references_unknown_db_envelope(facade: Any, structured: Any) -> None:
+    payload = structured(
+        await facade.call_tool(
+            "get_gene_cross_references", {"query": "BRAF", "databases": ["mane", "bogus_db"]}
+        )
+    )
+    assert payload["success"] is False
+    assert payload["error_code"] == "invalid_input"
+    assert payload["field"] == "databases"
+
+
 async def test_lookup_by_xref_tool(facade: Any, structured: Any) -> None:
     payload = structured(
         await facade.call_tool(

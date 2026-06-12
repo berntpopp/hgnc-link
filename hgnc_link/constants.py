@@ -110,6 +110,34 @@ XREF_SOURCE_ALIASES: dict[str, str] = {
     "rgd": "rgd_id",
 }
 
+#: Forward-filter synonyms for get_gene_cross_references' ``databases`` argument:
+#: friendly label / synonym -> the canonical XREF field key. Every XREF_FIELDS
+#: field is filterable by its own key, its (lowercased) label, and curated aliases.
+#: Matched case-insensitively. Unknown keys are rejected with invalid_input.
+XREF_FILTER_ALIASES: dict[str, str] = {
+    **{field: field for field, _ in XREF_FIELDS},
+    **{label.lower(): field for field, label in XREF_FIELDS},
+    "ncbi": "entrez_id",
+    "ncbi_gene": "entrez_id",
+    "ncbi_gene_id": "entrez_id",
+    "entrez": "entrez_id",
+    "gene_id": "entrez_id",
+    "ensembl": "ensembl_gene_id",
+    "ensg": "ensembl_gene_id",
+    "uniprot": "uniprot_ids",
+    "uniprot_id": "uniprot_ids",
+    "refseq": "refseq_accession",
+    "mane": "mane_select",
+    "omim": "omim_id",
+    "mim": "omim_id",
+    "ucsc": "ucsc_id",
+    "vega": "vega_id",
+    "ccds": "ccds_id",
+    "mgi": "mgd_id",
+    "rgd": "rgd_id",
+    "pubmed": "pubmed_id",
+}
+
 #: The four HGNC locus groups (with live record counts as of 2026-06).
 LOCUS_GROUPS: tuple[str, ...] = (
     "protein-coding gene",

@@ -8,9 +8,10 @@ surfaces ambiguity instead of silently collapsing it.
 
 from __future__ import annotations
 
+import difflib
 from typing import TYPE_CHECKING, Any
 
-from hgnc_link.constants import XREF_FIELDS, XREF_SOURCE_ALIASES
+from hgnc_link.constants import XREF_FIELDS, XREF_FILTER_ALIASES, XREF_SOURCE_ALIASES
 from hgnc_link.exceptions import (
     AmbiguousQueryError,
     DataUnavailableError,
@@ -295,10 +296,10 @@ class HgncService:
     ) -> dict[str, Any]:
         """Return external cross-references for a gene (forward identifier mapping)."""
         gene, match_type = self._resolve_to_gene((query or "").strip())
-        wanted = {d.strip().lower() for d in databases} if databases else None
+        wanted = _resolve_xref_filter(databases)
         xrefs: dict[str, Any] = {}
         for field, label in XREF_FIELDS:
-            if wanted is not None and field.lower() not in wanted and label.lower() not in wanted:
+            if wanted is not None and field not in wanted:
                 continue
             value = gene.get(field)
             if value:
@@ -379,6 +380,38 @@ class HgncService:
             "returned": len(members),
             "members": members,
         }
+
+
+def _resolve_xref_filter(databases: list[str] | None) -> set[str] | None:
+    """Normalize the ``databases`` filter to canonical field keys.
+
+    Friendly labels/synonyms (``mane``, ``ncbi``, ``mim`` ...) map to the field
+    key. An unrecognized key raises ``invalid_input`` with a did-you-mean rather
+    than silently returning an empty result. ``None`` means "no filter".
+    """
+    if not databases:
+        return None
+    resolved: set[str] = set()
+    unknown: list[str] = []
+    for db in databases:
+        canon = XREF_FILTER_ALIASES.get((db or "").strip().lower())
+        if canon is None:
+            unknown.append(db)
+        else:
+            resolved.add(canon)
+    if unknown:
+        allowed = [field for field, _ in XREF_FIELDS]
+        guess = difflib.get_close_matches(
+            (unknown[0] or "").strip().lower(), list(XREF_FILTER_ALIASES), n=1, cutoff=0.6
+        )
+        dym = f"Did you mean '{XREF_FILTER_ALIASES[guess[0]]}'? " if guess else ""
+        raise InvalidInputError(
+            f"Unknown cross-reference database(s): {', '.join(unknown)}.",
+            field="databases",
+            allowed=allowed,
+            hint=dym + "Use a field key or label, e.g. ensembl, uniprot, mane, omim.",
+        )
+    return resolved
 
 
 def _brief(gene: dict[str, Any], symbol_type: str) -> dict[str, Any]:

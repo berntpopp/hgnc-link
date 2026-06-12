@@ -102,6 +102,18 @@ def test_cross_references_and_filter(service: HgncService) -> None:
     assert set(only["cross_references"]) == {"ensembl_gene_id"}
 
 
+def test_cross_references_friendly_label(service: HgncService) -> None:
+    only = service.get_cross_references("BRAF", databases=["mane"])
+    assert "mane_select" in only["cross_references"]
+
+
+def test_cross_references_unknown_db_errors(service: HgncService) -> None:
+    with pytest.raises(InvalidInputError) as exc:
+        service.get_cross_references("BRAF", databases=["bogus_db"])
+    assert exc.value.field == "databases"
+    assert exc.value.allowed
+
+
 def test_lookup_by_xref_and_unknown_source(service: HgncService) -> None:
     r = service.lookup_by_xref("ensembl", "ENSG00000157764")
     assert r["results"][0]["symbol"] == "BRAF"
