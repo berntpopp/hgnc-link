@@ -140,8 +140,32 @@ def build_arg_error_envelope(
     valid_params: list[str],
     signature: str,
     suggestion: str | None,
+    constraints: tuple[list[str], str] | None = None,
 ) -> dict[str, Any]:
-    """Standard invalid-input envelope for an argument-binding failure."""
+    """Standard invalid-input envelope for an argument-binding failure.
+
+    When ``constraints`` is supplied the failure is an invalid *value* on a known
+    argument, so ``allowed_values`` carries the valid range/enum (not the list of
+    argument *names*) and the message states the constraint.
+    """
+    if constraints is not None:
+        allowed, human = constraints
+        message = f"Invalid value for argument `{loc}` of {tool_name}: {human}."
+        return {
+            "success": False,
+            "error_code": "invalid_input",
+            "message": message[:280],
+            "retryable": False,
+            "recovery_action": "reformulate_input",
+            "field": loc,
+            "allowed_values": allowed,
+            "hint": signature,
+            "_meta": {
+                "tool": tool_name,
+                "request_id": _request_id(),
+                "next_commands": [cmd("get_server_capabilities")],
+            },
+        }
     if error_type == "missing_argument":
         head = f"Missing required argument `{loc}` for {tool_name}."
     elif error_type == "unexpected_keyword_argument":

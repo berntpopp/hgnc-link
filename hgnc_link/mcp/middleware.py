@@ -20,7 +20,12 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import CallToolRequestParams, TextContent
 from pydantic import ValidationError
 
-from hgnc_link.mcp.arg_help import did_you_mean, normalize_alias_args, tool_signature
+from hgnc_link.mcp.arg_help import (
+    describe_constraints,
+    did_you_mean,
+    normalize_alias_args,
+    tool_signature,
+)
 from hgnc_link.mcp.envelope import build_arg_error_envelope
 
 logger = logging.getLogger(__name__)
@@ -82,6 +87,12 @@ class ArgValidationMiddleware(Middleware):
         first = exc.errors(include_url=False)[0]
         loc = ".".join(str(p) for p in first.get("loc", ())) or "input"
         error_type = str(first.get("type", "value_error"))
+        # A real param with a bad *value* (range/enum) -> surface the constraint,
+        # not the list of argument names.
+        constraints = None
+        if loc in valid and error_type not in ("missing", "missing_argument"):
+            field_schema = schema.get("properties", {}).get(loc, {})
+            constraints = describe_constraints(field_schema)
         suggestion = did_you_mean(loc, valid) if loc not in valid else None
         envelope = build_arg_error_envelope(
             tool_name=name,
@@ -90,6 +101,7 @@ class ArgValidationMiddleware(Middleware):
             valid_params=valid,
             signature=tool_signature(name, schema),
             suggestion=suggestion,
+            constraints=constraints,
         )
         logger.warning("mcp_arg_error tool=%s loc=%s type=%s", name, loc, error_type)
         return ToolResult(

@@ -86,6 +86,34 @@ def did_you_mean(unknown: str, valid: Iterable[str]) -> str | None:
     return matches[0] if matches else None
 
 
+def describe_constraints(field_schema: Mapping[str, Any]) -> tuple[list[str], str] | None:
+    """Surface a field's enum/range for an invalid-*value* error.
+
+    Returns ``(allowed_values, human_phrase)`` for an ``enum`` or a bounded
+    numeric field (digging through ``anyOf``/``allOf``/``oneOf``), or ``None`` for
+    a field with no value constraint (so the caller falls back to a name error).
+    """
+    nodes: list[Any] = [field_schema]
+    for key in ("anyOf", "allOf", "oneOf"):
+        nodes.extend(field_schema.get(key, []))
+    for node in nodes:
+        if isinstance(node, Mapping) and node.get("enum"):
+            vals = [str(v) for v in node["enum"]]
+            return vals, "must be one of: " + ", ".join(vals)
+    lo: Any = None
+    hi: Any = None
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        lo = node.get("minimum", node.get("exclusiveMinimum", lo))
+        hi = node.get("maximum", node.get("exclusiveMaximum", hi))
+    if lo is not None or hi is not None:
+        lo_s = str(int(lo)) if lo is not None else "?"
+        hi_s = str(int(hi)) if hi is not None else "?"
+        return [f"{lo_s}..{hi_s}"], f"must be between {lo_s} and {hi_s}"
+    return None
+
+
 def tool_signature(name: str, schema: Mapping[str, Any]) -> str:
     """Render ``name(req, opt=, ...)`` from a JSON input schema."""
     props = list(schema.get("properties", {}).keys())

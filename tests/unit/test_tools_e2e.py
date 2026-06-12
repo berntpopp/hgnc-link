@@ -94,6 +94,23 @@ async def test_lookup_by_xref_unknown_source(facade: Any, structured: Any) -> No
     assert payload["allowed_values"]
 
 
+async def test_limit_out_of_range_envelope(facade: Any, structured: Any) -> None:
+    payload = structured(await facade.call_tool("search_genes", {"query": "x", "limit": 250}))
+    assert payload["error_code"] == "invalid_input"
+    assert payload["field"] == "limit"
+    assert "200" in payload["message"]
+    assert payload["allowed_values"] == ["1..200"]
+
+
+async def test_bad_response_mode_envelope(facade: Any, structured: Any) -> None:
+    payload = structured(
+        await facade.call_tool("get_gene", {"query": "BRAF", "response_mode": "verbose"})
+    )
+    assert payload["error_code"] == "invalid_input"
+    assert payload["field"] == "response_mode"
+    assert set(payload["allowed_values"]) == {"minimal", "compact", "standard", "full"}
+
+
 async def test_gene_group_tool(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("get_gene_group", {"group": "1157"}))
     assert payload["group_name"] == "RAF family"

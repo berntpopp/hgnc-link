@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from hgnc_link.mcp.arg_help import did_you_mean, normalize_alias_args, tool_signature
+from hgnc_link.mcp.arg_help import (
+    describe_constraints,
+    did_you_mean,
+    normalize_alias_args,
+    tool_signature,
+)
 
 
 def test_normalize_alias_applies_only_for_real_params() -> None:
@@ -32,3 +37,23 @@ def test_did_you_mean_alias_then_fuzzy() -> None:
 def test_tool_signature_orders_required_first() -> None:
     schema = {"properties": {"query": {}, "response_mode": {}}, "required": ["query"]}
     assert tool_signature("get_gene", schema) == "get_gene(query, response_mode=)"
+
+
+def test_describe_constraints_enum() -> None:
+    result = describe_constraints({"enum": ["a", "b", "c"], "type": "string"})
+    assert result is not None
+    allowed, human = result
+    assert allowed == ["a", "b", "c"]
+    assert "one of" in human
+
+
+def test_describe_constraints_range() -> None:
+    result = describe_constraints({"type": "integer", "minimum": 1, "maximum": 200})
+    assert result is not None
+    allowed, human = result
+    assert allowed == ["1..200"]
+    assert "between 1 and 200" in human
+
+
+def test_describe_constraints_none_for_plain() -> None:
+    assert describe_constraints({"type": "string"}) is None
