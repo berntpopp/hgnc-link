@@ -125,7 +125,7 @@ def test_resolve_batch(service: HgncService) -> None:
 def test_diagnostics(service: HgncService) -> None:
     d = service.get_diagnostics()
     assert d["data_available"] is True
-    assert d["gene_count"] == 5
+    assert d["gene_count"] == 8
 
 
 def test_service_without_repo_raises_data_unavailable() -> None:

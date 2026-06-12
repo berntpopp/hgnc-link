@@ -32,7 +32,7 @@ def _config(tmp_path: Path) -> HgncDataConfig:
 def test_read_meta_roundtrip(built_db: Path) -> None:
     meta = builder.read_meta(built_db)
     assert meta is not None
-    assert meta.gene_count == 5
+    assert meta.gene_count == 8
     assert builder.read_meta(Path("/nope/x.sqlite")) is None
 
 

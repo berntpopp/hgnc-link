@@ -354,8 +354,66 @@
     ],
     "uuid": "307c2a6e-5a02-44ab-878c-cde6971aff05",
     "vega_id": "OTTHUMG00000039556"
+   },
+   {
+    "status": "Approved",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "date_approved_reserved": "2001-01-01T00:00:00Z",
+    "date_modified": "2024-01-01T00:00:00Z",
+    "hgnc_id": "HGNC:90001",
+    "symbol": "AMBA",
+    "name": "ambiguity test gene A",
+    "location": "1p11",
+    "alias_symbol": [
+     "DUPE",
+     "CROSS"
+    ],
+    "entrez_id": "900011",
+    "ensembl_gene_id": "ENSG09000000011",
+    "uniprot_ids": [
+     "A0A001"
+    ]
+   },
+   {
+    "status": "Approved",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "date_approved_reserved": "2001-01-01T00:00:00Z",
+    "date_modified": "2024-01-01T00:00:00Z",
+    "hgnc_id": "HGNC:90002",
+    "symbol": "AMBB",
+    "name": "ambiguity test gene B",
+    "location": "2q22",
+    "alias_symbol": [
+     "DUPE"
+    ],
+    "entrez_id": "900012",
+    "ensembl_gene_id": "ENSG09000000012",
+    "uniprot_ids": [
+     "A0A002"
+    ]
+   },
+   {
+    "status": "Approved",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "date_approved_reserved": "2001-01-01T00:00:00Z",
+    "date_modified": "2024-01-01T00:00:00Z",
+    "hgnc_id": "HGNC:90003",
+    "symbol": "XTIER",
+    "name": "cross-tier test gene",
+    "location": "3p21",
+    "prev_symbol": [
+     "CROSS"
+    ],
+    "entrez_id": "900013",
+    "ensembl_gene_id": "ENSG09000000013",
+    "uniprot_ids": [
+     "A0A003"
+    ]
    }
   ],
-  "numFound": 5
+  "numFound": 8
  }
 }

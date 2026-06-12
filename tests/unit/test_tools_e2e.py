@@ -15,7 +15,7 @@ async def test_capabilities_tool(facade: Any, structured: Any) -> None:
 async def test_diagnostics_tool(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("get_hgnc_diagnostics", {}))
     assert payload["data_available"] is True
-    assert payload["gene_count"] == 5
+    assert payload["gene_count"] == 8
     assert payload["_meta"]["next_commands"][0]["tool"] == "resolve_symbol"
 
 

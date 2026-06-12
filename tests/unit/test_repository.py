@@ -10,7 +10,7 @@ from hgnc_link.exceptions import DataUnavailableError
 
 def test_get_meta(repo: HgncRepository) -> None:
     meta = repo.get_meta()
-    assert meta["gene_count"] == 5
+    assert meta["gene_count"] == 8
     assert meta["withdrawn_count"] == 3
     assert meta["schema_version"] == 1
 
