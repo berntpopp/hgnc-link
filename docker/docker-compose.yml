@@ -6,6 +6,11 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: production
+      args:
+        # Stamp build provenance into the image so get_server_capabilities/_meta
+        # can report which build answered. Defaults keep an unset env harmless.
+        HGNC_LINK_GIT_SHA: ${HGNC_LINK_GIT_SHA:-unknown}
+        HGNC_LINK_BUILT_AT: ${HGNC_LINK_BUILT_AT:-}
     container_name: hgnc-link
     ports:
       - "${HGNC_LINK_HOST_PORT:-8000}:8000"
