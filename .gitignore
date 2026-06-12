@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Built data (downloaded HGNC dumps + SQLite index)
+/data/*.sqlite
+/data/*.sqlite-*
+/data/*.sqlite.tmp
+/data/*.json
+/data/*.txt
+/data/download_cache.json
+/data/.build.lock
+
+# Env / editors
+.env
+.idea/
+.vscode/
+*.swp

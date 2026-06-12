@@ -1,0 +1,361 @@
+{
+ "response": {
+  "docs": [
+   {
+    "agr": "HGNC:1097",
+    "alias_symbol": [
+     "BRAF1",
+     "BRAF-1"
+    ],
+    "ccds_id": [
+     "CCDS5863",
+     "CCDS87555",
+     "CCDS94218",
+     "CCDS94219"
+    ],
+    "cosmic": "BRAF",
+    "date_approved_reserved": "1991-07-16T00:00:00Z",
+    "date_modified": "2023-01-20T00:00:00Z",
+    "date_name_changed": "2014-06-26T00:00:00Z",
+    "ena": [
+     "M95712"
+    ],
+    "ensembl_gene_id": "ENSG00000157764",
+    "entrez_id": "673",
+    "gencc": "HGNC:1097",
+    "gene_group": [
+     "Mitogen-activated protein kinase kinase kinases",
+     "RAF family"
+    ],
+    "gene_group_id": [
+     654,
+     1157
+    ],
+    "hgnc_id": "HGNC:1097",
+    "iuphar": "HGNC:1097",
+    "location": "7q34",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "lsdb": [
+     "LRG_299|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_299.xml"
+    ],
+    "mane_select": [
+     "ENST00000646891.2",
+     "NM_004333.6"
+    ],
+    "mgd_id": [
+     "MGI:88190"
+    ],
+    "name": "B-Raf proto-oncogene, serine/threonine kinase",
+    "omim_id": [
+     "164757"
+    ],
+    "orphanet": 119066,
+    "prev_name": [
+     "v-raf murine sarcoma viral oncogene homolog B"
+    ],
+    "pubmed_id": [
+     2284096,
+     1565476
+    ],
+    "refseq_accession": [
+     "NM_004333"
+    ],
+    "rgd_id": [
+     "RGD:619908"
+    ],
+    "status": "Approved",
+    "symbol": "BRAF",
+    "ucsc_id": "uc003vwc.5",
+    "uniprot_ids": [
+     "P15056"
+    ],
+    "uuid": "da085d68-6c9a-4696-87d1-55d0c6d7a36b",
+    "vega_id": "OTTHUMG00000157457"
+   },
+   {
+    "agr": "HGNC:11998",
+    "alias_name": [
+     "Li-Fraumeni syndrome"
+    ],
+    "alias_symbol": [
+     "p53",
+     "LFS1"
+    ],
+    "ccds_id": [
+     "CCDS11118",
+     "CCDS45605",
+     "CCDS45606",
+     "CCDS73963",
+     "CCDS73964",
+     "CCDS73965",
+     "CCDS73966",
+     "CCDS73967",
+     "CCDS73968",
+     "CCDS73969",
+     "CCDS73970",
+     "CCDS73971"
+    ],
+    "cosmic": "TP53",
+    "date_approved_reserved": "1986-01-01T00:00:00Z",
+    "date_modified": "2023-01-20T00:00:00Z",
+    "date_name_changed": "2008-01-16T00:00:00Z",
+    "ena": [
+     "AF307851"
+    ],
+    "ensembl_gene_id": "ENSG00000141510",
+    "entrez_id": "7157",
+    "gencc": "HGNC:11998",
+    "hgnc_id": "HGNC:11998",
+    "location": "17p13.1",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "lsdb": [
+     "IARC TP53 Mutation Database|http://www-p53.iarc.fr/",
+     "p53 UMD TP53 mutation database|http://p53.fr/",
+     "Database of Germline p53 Mutations|http://www.lf2.cuni.cz/projects/germline_mut_p53.htm",
+     "MUTP53LOAD, Mutant p53 Loss Of Activity Database|http://www.umd.be:2072/",
+     "LRG_321|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_321.xml"
+    ],
+    "mane_select": [
+     "ENST00000269305.9",
+     "NM_000546.6"
+    ],
+    "mgd_id": [
+     "MGI:98834"
+    ],
+    "name": "tumor protein p53",
+    "omim_id": [
+     "191170"
+    ],
+    "orphanet": 120204,
+    "pubmed_id": [
+     6396087,
+     3456488,
+     2047879
+    ],
+    "refseq_accession": [
+     "NM_000546"
+    ],
+    "rgd_id": [
+     "RGD:3889"
+    ],
+    "status": "Approved",
+    "symbol": "TP53",
+    "ucsc_id": "uc060aur.1",
+    "uniprot_ids": [
+     "P04637"
+    ],
+    "uuid": "d693ba26-eac0-4b36-9e5c-8d5f13b70ef4",
+    "vega_id": "OTTHUMG00000162125"
+   },
+   {
+    "agr": "HGNC:23336",
+    "alias_symbol": [
+     "FLJ25179",
+     "p170"
+    ],
+    "ccds_id": [
+     "CCDS73439",
+     "CCDS8596"
+    ],
+    "date_approved_reserved": "2005-07-20T00:00:00Z",
+    "date_modified": "2023-01-20T00:00:00Z",
+    "date_name_changed": "2016-03-07T00:00:00Z",
+    "date_symbol_changed": "2005-09-01T00:00:00Z",
+    "ena": [
+     "AK057908"
+    ],
+    "ensembl_gene_id": "ENSG00000166535",
+    "entrez_id": "144568",
+    "gencc": "HGNC:23336",
+    "gene_group": [
+     "Alpha-2-macroglobulin family"
+    ],
+    "gene_group_id": [
+     2148
+    ],
+    "hgnc_id": "HGNC:23336",
+    "location": "12p13.31",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "mane_select": [
+     "ENST00000299698.12",
+     "NM_144670.6"
+    ],
+    "merops": "I39.007",
+    "name": "alpha-2-macroglobulin like 1",
+    "omim_id": [
+     "610627"
+    ],
+    "orphanet": 410627,
+    "prev_name": [
+     "C3 and PZP-like, alpha-2-macroglobulin domain containing 9"
+    ],
+    "prev_symbol": [
+     "CPAMD9"
+    ],
+    "pubmed_id": [
+     16298998
+    ],
+    "refseq_accession": [
+     "NM_144670"
+    ],
+    "status": "Approved",
+    "symbol": "A2ML1",
+    "ucsc_id": "uc001quz.6",
+    "uniprot_ids": [
+     "A8K2U0"
+    ],
+    "uuid": "9f74e762-cb88-414e-ae22-25db096447bb",
+    "vega_id": "OTTHUMG00000128499"
+   },
+   {
+    "agr": "HGNC:20778",
+    "alias_name": [
+     "class I beta-tubulin",
+     "beta1-tubulin"
+    ],
+    "alias_symbol": [
+     "OK/SW-cl.56",
+     "MGC16435",
+     "M40",
+     "Tubb5"
+    ],
+    "ccds_id": [
+     "CCDS4687",
+     "CCDS78124"
+    ],
+    "date_approved_reserved": "2004-11-22T00:00:00Z",
+    "date_modified": "2023-01-20T00:00:00Z",
+    "date_name_changed": "2015-12-17T00:00:00Z",
+    "ena": [
+     "AB062393"
+    ],
+    "ensembl_gene_id": "ENSG00000196230",
+    "entrez_id": "203068",
+    "gencc": "HGNC:20778",
+    "gene_group": [
+     "Tubulin beta family"
+    ],
+    "gene_group_id": [
+     3661
+    ],
+    "hgnc_id": "HGNC:20778",
+    "iuphar": "HGNC:20778",
+    "location": "6p21.33",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "mane_select": [
+     "ENST00000327892.13",
+     "NM_178014.4"
+    ],
+    "mgd_id": [
+     "MGI:107812"
+    ],
+    "name": "tubulin beta class I",
+    "omim_id": [
+     "191130"
+    ],
+    "orphanet": 448353,
+    "prev_name": [
+     "tubulin, beta polypeptide",
+     "tubulin, beta",
+     "tubulin, beta class I"
+    ],
+    "pubmed_id": [
+     11504633,
+     8270253
+    ],
+    "refseq_accession": [
+     "NM_178014"
+    ],
+    "rgd_id": [
+     "RGD:628596"
+    ],
+    "status": "Approved",
+    "symbol": "TUBB",
+    "ucsc_id": "uc063yon.1",
+    "uniprot_ids": [
+     "P07437"
+    ],
+    "uuid": "efcfa827-048c-457e-83b9-f21beb22cefc",
+    "vega_id": "OTTHUMG00000031059"
+   },
+   {
+    "agr": "HGNC:12796",
+    "alias_symbol": [
+     "WAGR",
+     "WIT-2",
+     "AWT1",
+     "NPHS4",
+     "WT-1"
+    ],
+    "ccds_id": [
+     "CCDS44561",
+     "CCDS44562",
+     "CCDS55750",
+     "CCDS55751",
+     "CCDS7878"
+    ],
+    "cosmic": "WT1",
+    "date_approved_reserved": "1989-04-13T00:00:00Z",
+    "date_modified": "2023-03-15T00:00:00Z",
+    "date_name_changed": "2019-02-15T00:00:00Z",
+    "ensembl_gene_id": "ENSG00000184937",
+    "entrez_id": "7490",
+    "gencc": "HGNC:12796",
+    "gene_group": [
+     "Zinc fingers C2H2-type"
+    ],
+    "gene_group_id": [
+     28
+    ],
+    "hgnc_id": "HGNC:12796",
+    "location": "11p13",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "lsdb": [
+     "LRG_525|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_525.xml"
+    ],
+    "mane_select": [
+     "ENST00000452863.10",
+     "NM_024426.6"
+    ],
+    "mgd_id": [
+     "MGI:98968"
+    ],
+    "name": "WT1 transcription factor",
+    "omim_id": [
+     "607102"
+    ],
+    "orphanet": 120549,
+    "prev_name": [
+     "Wilms tumor 1"
+    ],
+    "prev_symbol": [
+     "GUD"
+    ],
+    "pubmed_id": [
+     14681303,
+     9810227
+    ],
+    "refseq_accession": [
+     "NM_000378"
+    ],
+    "rgd_id": [
+     "RGD:3974"
+    ],
+    "status": "Approved",
+    "symbol": "WT1",
+    "ucsc_id": "uc001mtn.4",
+    "uniprot_ids": [
+     "P19544"
+    ],
+    "uuid": "307c2a6e-5a02-44ab-878c-cde6971aff05",
+    "vega_id": "OTTHUMG00000039556"
+   }
+  ],
+  "numFound": 5
+ }
+}

@@ -1,0 +1,17 @@
+{
+  "_comment": "Add this block to claude_desktop_config.json (mcpServers). Replace the path. The stdio entry point builds the local index on first start.",
+  "mcpServers": {
+    "hgnc-link": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/absolute/path/to/hgnc-link",
+        "run",
+        "hgnc-link-mcp"
+      ],
+      "env": {
+        "HGNC_LINK_DATA__DATA_DIR": "/absolute/path/to/hgnc-link/data"
+      }
+    }
+  }
+}
