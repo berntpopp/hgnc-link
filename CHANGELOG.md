@@ -6,6 +6,37 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed (excellence pass v2 — live-assessment residual gaps)
+- **`get_gene_cross_references` `response_mode` tiers are now meaningful.** The
+  tool previously returned every populated xref in every mode (so `response_mode`
+  was inert). Now `minimal` = NCBI + Ensembl ids; `compact` (default) = the
+  high-value set (NCBI, Ensembl, UniProt, RefSeq, MANE Select, OMIM, CCDS) — which
+  **includes** the MANE/UniProt/OMIM fields a prior report found missing;
+  `standard`/`full` = every populated field. An explicit `databases=` filter still
+  overrides the tier. The chosen tier is echoed as `response_mode`.
+- **`get_gene_group` paginates.** Members are now globally symbol-ordered (resolved
+  in SQL) and sliced by `limit` + a new `offset`; the response carries `offset`,
+  `limit`, `truncated`, and `next_offset`, and — when truncated — a `next_commands`
+  entry that fetches the next page. Pagination partitions the membership with no
+  overlaps or skips.
+
+### Added (excellence pass v2)
+- **`resolve_symbols_batch.queries` is schema-capped at `maxItems:200`** for
+  client-side parity with `search_genes.limit` / `get_gene_group.limit`; the
+  server-side cap remains as a backstop and array-length violations now report
+  "must have between 0 and 200 items".
+- **Capabilities document three contracts that were previously implicit:**
+  `cross_reference_tiers` (the per-mode field sets), `argument_alias_policy`
+  (aliases are server-side synonyms; schema-strict clients use the canonical
+  parameter; unknown names get a did-you-mean), and `search_semantics`
+  (`search_genes` is nomenclature-only — no disease/phenotype matching). The last
+  two are surfaced in the light capabilities summary.
+- Regression tests locking the ambiguous-`resolve_symbol` → `ambiguous_query`
+  contract, withdrawn/merged redirects through `resolve_symbol` (symbol and id
+  forms), the `databases=` synonym/reject behavior, and build-provenance
+  propagation into the capabilities surface — closing the live re-run's coverage
+  gaps so they cannot silently regress.
+
 ### Fixed
 - **`resolve_symbol` no longer breaks on ambiguity.** An alias shared by several
   genes now returns a structured `ambiguous_query` error with the candidate list
