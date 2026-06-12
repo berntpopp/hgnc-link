@@ -28,10 +28,13 @@ def register_group_tools(mcp: FastMCP) -> None:
         tags={"group"},
         description=(
             "Browse a HGNC gene group/family by numeric group id (e.g. '1157') or by "
-            "name (e.g. 'RAF family'). Returns the member genes as ranked summaries. "
-            "A name matching several groups returns the candidate groups so you can "
-            "re-call with a specific id. "
-            "Signature: get_gene_group(group, limit=, response_mode=)."
+            "name (e.g. 'RAF family'). Returns the member genes as symbol-ordered "
+            "summaries. Members are paginated with limit + offset; the response "
+            "carries member_count, returned, truncated, and next_offset, and (when "
+            "truncated) a next_commands entry that fetches the next page. A name "
+            "matching several groups returns the candidate groups so you can re-call "
+            "with a specific id. "
+            "Signature: get_gene_group(group, limit=, offset=, response_mode=)."
         ),
     )
     async def get_gene_group(
@@ -43,10 +46,15 @@ def register_group_tools(mcp: FastMCP) -> None:
             ),
         ],
         limit: Annotated[int, Field(ge=1, le=1000, description="Max members (default 200).")] = 200,
+        offset: Annotated[
+            int, Field(ge=0, description="Skip this many members for pagination (default 0).")
+        ] = 0,
         response_mode: ResponseMode = "compact",
     ) -> dict[str, Any]:
         async def call() -> dict[str, Any]:
-            payload = get_hgnc_service().get_gene_group(group, limit=limit, mode=response_mode)
+            payload = get_hgnc_service().get_gene_group(
+                group, limit=limit, offset=offset, mode=response_mode
+            )
             payload["_meta"] = {"next_commands": after_group(payload)}
             return payload
 

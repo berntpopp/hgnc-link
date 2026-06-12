@@ -110,6 +110,22 @@ XREF_SOURCE_ALIASES: dict[str, str] = {
     "rgd": "rgd_id",
 }
 
+#: response_mode -> the cross-reference fields get_gene_cross_references emits when
+#: no explicit ``databases=`` filter is given. ``minimal`` keeps the two anchor ids;
+#: ``compact`` (default) keeps the high-value identifiers most callers want;
+#: ``standard``/``full`` emit every populated field. An explicit ``databases=``
+#: filter overrides the tier. Documented in get_server_capabilities.
+XREF_TIER_MINIMAL: tuple[str, ...] = ("entrez_id", "ensembl_gene_id")
+XREF_TIER_COMPACT: tuple[str, ...] = (
+    "entrez_id",
+    "ensembl_gene_id",
+    "uniprot_ids",
+    "refseq_accession",
+    "mane_select",
+    "omim_id",
+    "ccds_id",
+)
+
 #: Forward-filter synonyms for get_gene_cross_references' ``databases`` argument:
 #: friendly label / synonym -> the canonical XREF field key. Every XREF_FIELDS
 #: field is filterable by its own key, its (lowercased) label, and curated aliases.

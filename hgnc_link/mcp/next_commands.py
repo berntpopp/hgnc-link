@@ -85,16 +85,26 @@ def after_xref(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def after_group(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """After get_gene_group: drill into the first member (or disambiguate)."""
+    """After get_gene_group: drill into the first member, then the next page."""
     if payload.get("ambiguous"):
         matches = payload.get("matches", [])[:2]
         return [
             cmd("get_gene_group", group=str(m["group_id"])) for m in matches if m.get("group_id")
         ]
+    chain: list[dict[str, Any]] = []
     members = payload.get("members", [])
     if members and members[0].get("hgnc_id"):
-        return [cmd("get_gene", query=members[0]["hgnc_id"])]
-    return [cmd("get_server_capabilities")]
+        chain.append(cmd("get_gene", query=members[0]["hgnc_id"]))
+    if payload.get("truncated") and payload.get("next_offset") is not None:
+        chain.append(
+            cmd(
+                "get_gene_group",
+                group=str(payload.get("group_id")),
+                offset=payload["next_offset"],
+                limit=payload.get("limit", 200),
+            )
+        )
+    return chain or [cmd("get_server_capabilities")]
 
 
 def withdrawn_recovery(replaced_by: list[dict[str, str]]) -> list[dict[str, Any]]:

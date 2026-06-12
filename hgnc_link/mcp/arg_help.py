@@ -111,6 +111,17 @@ def describe_constraints(field_schema: Mapping[str, Any]) -> tuple[list[str], st
         lo_s = str(int(lo)) if lo is not None else "?"
         hi_s = str(int(hi)) if hi is not None else "?"
         return [f"{lo_s}..{hi_s}"], f"must be between {lo_s} and {hi_s}"
+    min_items: Any = None
+    max_items: Any = None
+    for node in nodes:
+        if not isinstance(node, Mapping):
+            continue
+        min_items = node.get("minItems", min_items)
+        max_items = node.get("maxItems", max_items)
+    if min_items is not None or max_items is not None:
+        lo_s = str(int(min_items)) if min_items is not None else "0"
+        hi_s = str(int(max_items)) if max_items is not None else "?"
+        return [f"{lo_s}..{hi_s} items"], f"must have between {lo_s} and {hi_s} items"
     return None
 
 

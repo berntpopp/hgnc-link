@@ -69,7 +69,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
     async def resolve_symbols_batch(
         queries: Annotated[
             list[str],
-            Field(description="Gene symbols and/or HGNC ids to resolve (max 200)."),
+            Field(max_length=200, description="Gene symbols and/or HGNC ids to resolve (max 200)."),
         ],
         response_mode: ResponseMode = "compact",
     ) -> dict[str, Any]:

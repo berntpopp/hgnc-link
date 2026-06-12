@@ -17,6 +17,8 @@ from hgnc_link.constants import (
     XREF_FIELDS,
     XREF_FILTER_ALIASES,
     XREF_SOURCE_ALIASES,
+    XREF_TIER_COMPACT,
+    XREF_TIER_MINIMAL,
 )
 from hgnc_link.ingest.builder import read_meta
 from hgnc_link.mcp.arg_help import ARG_ALIASES, tool_signature
@@ -50,6 +52,8 @@ _SUMMARY_KEYS: tuple[str, ...] = (
     "response_modes",
     "default_response_mode",
     "recommended_workflows",
+    "argument_alias_policy",
+    "search_semantics",
     "error_codes",
     "limits",
     "read_only",
@@ -100,6 +104,16 @@ def build_capabilities() -> dict[str, Any]:
         "locus_groups": list(LOCUS_GROUPS),
         "cross_reference_databases": [{"field": f, "label": label} for f, label in XREF_FIELDS],
         "cross_reference_filter_synonyms": sorted(XREF_FILTER_ALIASES),
+        "cross_reference_tiers": {
+            "minimal": list(XREF_TIER_MINIMAL),
+            "compact": list(XREF_TIER_COMPACT),
+            "standard": "all populated fields",
+            "full": "all populated fields",
+            "note": (
+                "get_gene_cross_references emits this default field set per "
+                "response_mode; an explicit databases= filter overrides the tier."
+            ),
+        },
         "xref_lookup_sources": sorted(set(XREF_SOURCE_ALIASES.values())),
         "provenance_policy": (
             "Static provenance (research-use restriction, citation, HGNC release) "
@@ -108,6 +122,22 @@ def build_capabilities() -> dict[str, Any]:
         ),
         "per_call_meta": ["tool", "request_id", "next_commands"],
         "id_normalization": "HGNC ids accepted/returned as both 'HGNC:1100' and '1100'.",
+        "argument_alias_policy": (
+            "argument_aliases are server-side synonyms accepted IN ADDITION to each "
+            "tool's canonical parameter (e.g. symbol/gene/id -> query); an applied "
+            "rewrite is disclosed under _meta.argument_aliases_applied. Tool "
+            "inputSchemas stay strict (additionalProperties:false), so a "
+            "schema-validating client should pass the CANONICAL name shown in "
+            "tool_signatures; an unknown argument name returns invalid_input with a "
+            "did-you-mean."
+        ),
+        "search_semantics": (
+            "search_genes is nomenclature full-text search over symbol, name, alias, "
+            "and previous-symbol only (relevance-ranked). It has NO disease/phenotype "
+            "semantics: a descriptive query like 'polycystin kidney' will not surface "
+            "PKD1/PKD2 unless those words appear in the gene's nomenclature. Use an "
+            "exact symbol/id with resolve_symbol, or an external id with lookup_by_xref."
+        ),
         "recommended_workflows": [
             "any symbol/id -> resolve_symbol -> get_gene -> get_gene_cross_references",
             "outdated/alias symbol -> resolve_symbol (match_type tells you previous vs alias)",

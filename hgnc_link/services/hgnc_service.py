@@ -11,7 +11,13 @@ from __future__ import annotations
 import difflib
 from typing import TYPE_CHECKING, Any
 
-from hgnc_link.constants import XREF_FIELDS, XREF_FILTER_ALIASES, XREF_SOURCE_ALIASES
+from hgnc_link.constants import (
+    XREF_FIELDS,
+    XREF_FILTER_ALIASES,
+    XREF_SOURCE_ALIASES,
+    XREF_TIER_COMPACT,
+    XREF_TIER_MINIMAL,
+)
 from hgnc_link.exceptions import (
     AmbiguousQueryError,
     DataUnavailableError,
@@ -303,9 +309,16 @@ class HgncService:
     def get_cross_references(
         self, query: str, *, databases: list[str] | None = None, mode: str = "compact"
     ) -> dict[str, Any]:
-        """Return external cross-references for a gene (forward identifier mapping)."""
+        """Return external cross-references for a gene (forward identifier mapping).
+
+        ``response_mode`` selects the default field set (minimal=anchor ids,
+        compact=high-value, standard/full=all populated). An explicit
+        ``databases=`` filter overrides the tier and returns exactly those fields.
+        """
         gene, match_type = self._resolve_to_gene((query or "").strip())
         wanted = _resolve_xref_filter(databases)
+        if wanted is None:
+            wanted = _xref_tier_fields(mode)
         xrefs: dict[str, Any] = {}
         for field, label in XREF_FIELDS:
             if wanted is not None and field not in wanted:
@@ -317,6 +330,7 @@ class HgncService:
             "hgnc_id": gene.get("hgnc_id"),
             "symbol": gene.get("symbol"),
             "match_type": match_type,
+            "response_mode": mode,
             "database_count": len(xrefs),
             "cross_references": xrefs,
         }
@@ -350,13 +364,18 @@ class HgncService:
         }
 
     def get_gene_group(
-        self, group: str, *, limit: int = 200, mode: str = "compact"
+        self, group: str, *, limit: int = 200, offset: int = 0, mode: str = "compact"
     ) -> dict[str, Any]:
-        """Return the member genes of a gene group/family (by id or name)."""
+        """Return the member genes of a gene group/family (by id or name).
+
+        Members are globally symbol-ordered, so ``offset``/``limit`` paginate
+        deterministically. ``truncated`` and ``next_offset`` signal more pages.
+        """
         raw = (group or "").strip()
         if not raw:
             raise InvalidInputError("group must be a group id or name.", field="group")
         limit = max(1, min(limit, 1000))
+        offset = max(0, offset)
         if raw.isdigit():
             group_id: str | None = raw
             group_name = self.repo.group_name_for_id(raw)
@@ -379,14 +398,20 @@ class HgncService:
                     "note": "Multiple groups matched; call get_gene_group with a group id.",
                 }
         hgnc_ids = self.repo.group_members(group_id=group_id, group_name=group_name)
-        genes = [self.repo.get_gene(hid) for hid in hgnc_ids[:limit]]
+        member_count = len(hgnc_ids)
+        page_ids = hgnc_ids[offset : offset + limit]
+        genes = [self.repo.get_gene(hid) for hid in page_ids]
         members = [shape_summary(_brief(g, "current"), mode) for g in genes if g is not None]
-        members.sort(key=lambda m: m.get("symbol") or "")
+        truncated = (offset + len(page_ids)) < member_count
         return {
             "group_id": group_id,
             "group_name": group_name,
-            "member_count": len(hgnc_ids),
+            "member_count": member_count,
             "returned": len(members),
+            "offset": offset,
+            "limit": limit,
+            "truncated": truncated,
+            "next_offset": (offset + limit) if truncated else None,
             "members": members,
         }
 
@@ -421,6 +446,15 @@ def _resolve_xref_filter(databases: list[str] | None) -> set[str] | None:
             hint=dym + "Use a field key or label, e.g. ensembl, uniprot, mane, omim.",
         )
     return resolved
+
+
+def _xref_tier_fields(mode: str) -> set[str] | None:
+    """The default xref field whitelist for a verbosity tier (``None`` = all populated)."""
+    if mode == "minimal":
+        return set(XREF_TIER_MINIMAL)
+    if mode == "compact":
+        return set(XREF_TIER_COMPACT)
+    return None  # standard / full: every populated field
 
 
 def _brief(gene: dict[str, Any], symbol_type: str) -> dict[str, Any]:

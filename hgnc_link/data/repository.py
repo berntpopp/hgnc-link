@@ -183,15 +183,24 @@ class HgncRepository:
     # -- gene groups -----------------------------------------------------------
 
     def group_members(self, *, group_id: str | None, group_name: str | None) -> list[str]:
-        """Return HGNC IDs belonging to a gene group (by id or exact name)."""
+        """Return HGNC IDs belonging to a gene group, ordered by symbol.
+
+        The stable, global symbol ordering (resolved in SQL via a join to ``gene``)
+        is what makes ``offset``/``limit`` pagination partition the membership
+        without overlaps or skips.
+        """
         if group_id is not None:
             rows = self._conn.execute(
-                "SELECT DISTINCT hgnc_id FROM gene_group WHERE group_id = ?",
+                "SELECT DISTINCT gg.hgnc_id, g.symbol FROM gene_group gg "
+                "JOIN gene g ON g.hgnc_id = gg.hgnc_id "
+                "WHERE gg.group_id = ? ORDER BY g.symbol, gg.hgnc_id",
                 (str(group_id),),
             ).fetchall()
         else:
             rows = self._conn.execute(
-                "SELECT DISTINCT hgnc_id FROM gene_group WHERE UPPER(group_name) = ?",
+                "SELECT DISTINCT gg.hgnc_id, g.symbol FROM gene_group gg "
+                "JOIN gene g ON g.hgnc_id = gg.hgnc_id "
+                "WHERE UPPER(gg.group_name) = ? ORDER BY g.symbol, gg.hgnc_id",
                 ((group_name or "").upper(),),
             ).fetchall()
         return [r["hgnc_id"] for r in rows]
