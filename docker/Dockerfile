@@ -65,6 +65,15 @@ COPY --chown=app:app ./docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN /opt/venv/bin/pip install . --no-deps && chmod +x /usr/local/bin/entrypoint.sh
 
+# Stamp build provenance so get_server_capabilities/_meta can report which build
+# answered. Pass at build time, e.g.:
+#   docker build --build-arg HGNC_LINK_GIT_SHA=$(git rev-parse --short HEAD) \
+#                --build-arg HGNC_LINK_BUILT_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ) .
+ARG HGNC_LINK_GIT_SHA=unknown
+ARG HGNC_LINK_BUILT_AT
+ENV HGNC_LINK_GIT_SHA=${HGNC_LINK_GIT_SHA} \
+    HGNC_LINK_BUILT_AT=${HGNC_LINK_BUILT_AT}
+
 USER app
 
 EXPOSE 8000

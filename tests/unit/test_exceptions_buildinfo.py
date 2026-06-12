@@ -30,3 +30,12 @@ def test_build_info_keys(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     info = build_info()
     assert info["git_sha"] == "deadbeef"
     assert "version" in info
+
+
+def test_build_info_falls_back_to_git(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.delenv("HGNC_LINK_GIT_SHA", raising=False)
+    monkeypatch.delenv("HGNC_LINK_BUILT_AT", raising=False)
+    info = build_info()
+    # In a git checkout the sha resolves from .git; built_at falls back to a timestamp.
+    assert info["git_sha"] != "unknown"
+    assert info["built_at"] is not None
