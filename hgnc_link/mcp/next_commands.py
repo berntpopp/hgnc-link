@@ -28,7 +28,10 @@ def default_error_next_commands(
         value = str(arguments.get("query", ""))
         source = infer_xref_source(value)
         if source:
-            return [cmd("lookup_by_xref", source=source, value=value), cmd("search_genes", query=value)]
+            return [
+                cmd("lookup_by_xref", source=source, value=value),
+                cmd("search_genes", query=value),
+            ]
         if value and looks_like_symbol(value):
             return [cmd("search_genes", query=value), cmd("get_server_capabilities")]
         if value and not looks_like_hgnc_id(value):

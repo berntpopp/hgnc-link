@@ -9,7 +9,7 @@ falls back to the package mtime — the server can always say which build answer
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from hgnc_link import __version__
@@ -43,7 +43,7 @@ def _built_at_fallback() -> str | None:
     """ISO-8601 mtime of the package as a best-effort build timestamp."""
     try:
         mtime = Path(__file__).with_name("__init__.py").stat().st_mtime
-        return datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat()
+        return datetime.fromtimestamp(mtime, tz=UTC).isoformat()
     except OSError:
         return None
 
