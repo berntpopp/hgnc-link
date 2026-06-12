@@ -33,6 +33,7 @@ def _envelope(**properties: Any) -> dict[str, Any]:
 
 
 _STR = {"type": "string"}
+_STR_NULL = {"type": ["string", "null"]}
 _INT = {"type": "integer"}
 _NUM = {"type": "number"}
 _BOOL = {"type": "boolean"}
@@ -61,16 +62,17 @@ DIAGNOSTICS_SCHEMA = _envelope(
 
 RESOLVE_SCHEMA = _envelope(
     query=_STR,
-    hgnc_id=_STR,
-    approved_symbol=_STR,
-    name=_STR,
-    status=_STR,
-    locus_type=_STR,
-    location=_STR,
-    match_type=_STR,
+    hgnc_id=_STR_NULL,
+    approved_symbol=_STR_NULL,
+    name=_STR_NULL,
+    status=_STR_NULL,
+    locus_type=_STR_NULL,
+    location=_STR_NULL,
+    match_type=_STR_NULL,
     ambiguous=_BOOL,
     candidate_count=_INT,
     candidates=_ARR,
+    other_matches=_ARR,
     note=_STR,
 )
 

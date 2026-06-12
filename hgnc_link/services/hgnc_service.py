@@ -105,29 +105,29 @@ class HgncService:
             )
         raise NotFoundError(f"No HGNC record for {hgnc_id}.")
 
+    def _ambiguity_error(
+        self, raw: str, best_type: str, best: list[tuple[str, str]]
+    ) -> AmbiguousQueryError:
+        """Build the ambiguous_query error for a symbol shared by several genes."""
+        candidates = [
+            _brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, stype) for hid, stype in best
+        ]
+        return AmbiguousQueryError(
+            f"'{raw}' is a {best_type} symbol for {len(best)} genes; pick one and call get_gene.",
+            candidates=candidates,
+        )
+
     def _resolve_symbol_pairs(
         self, raw: str, pairs: list[tuple[str, str]], mode: str
     ) -> dict[str, Any]:
         best_type = pairs[0][1]
         best = [p for p in pairs if p[1] == best_type]
+        if len(best) > 1:
+            raise self._ambiguity_error(raw, best_type, best)
         candidates = [
             _brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, stype)
             for hid, stype in pairs[:_MAX_CANDIDATES]
         ]
-        if len(best) > 1:
-            return {
-                "query": raw,
-                "hgnc_id": None,
-                "approved_symbol": None,
-                "match_type": best_type,
-                "ambiguous": True,
-                "candidate_count": len(candidates),
-                "candidates": [shape_summary(c, mode) for c in candidates],
-                "note": (
-                    f"'{raw}' is a {best_type} symbol for {len(best)} genes; "
-                    "pick one and call get_gene."
-                ),
-            }
         gene = self.repo.get_gene(best[0][0])
         if gene is None:  # pragma: no cover - index integrity
             raise NotFoundError(f"No HGNC record for {best[0][0]}.")

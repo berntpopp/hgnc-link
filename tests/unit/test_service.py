@@ -136,17 +136,10 @@ def test_service_without_repo_raises_data_unavailable() -> None:
     assert diag["data_available"] is False
 
 
-def test_ambiguous_alias(service: HgncService, repo) -> None:  # type: ignore[no-untyped-def]
-    # Directly seed an ambiguous alias scenario by checking resolve handles >1 best.
-    # Build a synthetic pair set via monkeypatching repo.lookup_symbol.
-    original = repo.lookup_symbol
-    repo.lookup_symbol = lambda s: [("HGNC:1097", "alias"), ("HGNC:11998", "alias")]  # type: ignore[method-assign]
-    try:
-        r = service.resolve("SHARED")
-        assert r["ambiguous"] is True
-        assert r["hgnc_id"] is None
-        assert r["candidate_count"] == 2
-        with pytest.raises(AmbiguousQueryError):
-            service.get_gene("SHARED")
-    finally:
-        repo.lookup_symbol = original  # type: ignore[method-assign]
+def test_ambiguous_alias(service: HgncService) -> None:
+    # `DUPE` is an alias shared by AMBA + AMBB in the fixtures (within-tier ambiguity).
+    with pytest.raises(AmbiguousQueryError) as exc:
+        service.resolve("DUPE")
+    assert len(exc.value.candidates) == 2
+    with pytest.raises(AmbiguousQueryError):
+        service.get_gene("DUPE")
