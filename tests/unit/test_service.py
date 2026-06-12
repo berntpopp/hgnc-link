@@ -107,6 +107,26 @@ def test_cross_references_friendly_label(service: HgncService) -> None:
     assert "mane_select" in only["cross_references"]
 
 
+def test_cross_references_modes(service: HgncService) -> None:
+    # minimal -> anchor ids only.
+    minimal = service.get_cross_references("BRAF", mode="minimal")
+    assert set(minimal["cross_references"]) == {"entrez_id", "ensembl_gene_id"}
+    # compact (default) -> includes the high-value fields the assessment wanted.
+    compact = service.get_cross_references("BRAF", mode="compact")
+    assert {"mane_select", "uniprot_ids", "omim_id"} <= set(compact["cross_references"])
+    assert "ucsc_id" not in compact["cross_references"]  # low-value, dropped in compact
+    # full -> every populated xref, including the low-value ones.
+    full = service.get_cross_references("BRAF", mode="full")
+    assert "ucsc_id" in full["cross_references"]
+    assert len(full["cross_references"]) > len(compact["cross_references"])
+
+
+def test_cross_references_filter_overrides_mode(service: HgncService) -> None:
+    # An explicit database request wins even in a narrow tier (ucsc is low-value).
+    out = service.get_cross_references("BRAF", databases=["ucsc"], mode="minimal")
+    assert set(out["cross_references"]) == {"ucsc_id"}
+
+
 def test_cross_references_unknown_db_errors(service: HgncService) -> None:
     with pytest.raises(InvalidInputError) as exc:
         service.get_cross_references("BRAF", databases=["bogus_db"])
@@ -136,6 +156,31 @@ def test_gene_group_by_id_and_name(service: HgncService) -> None:
     assert any(m["symbol"] == "BRAF" for m in g["members"])
     with pytest.raises(NotFoundError):
         service.get_gene_group("99999")
+
+
+def test_gene_group_pagination(service: HgncService) -> None:
+    # Group 9990 has two members (TUBB, WT1) in the fixtures.
+    page1 = service.get_gene_group("9990", limit=1, offset=0)
+    assert page1["member_count"] == 2
+    assert page1["returned"] == 1
+    assert page1["offset"] == 0
+    assert page1["truncated"] is True
+    assert page1["next_offset"] == 1
+    assert page1["members"][0]["symbol"] == "TUBB"  # globally symbol-ordered
+    page2 = service.get_gene_group("9990", limit=1, offset=1)
+    assert page2["returned"] == 1
+    assert page2["truncated"] is False
+    assert page2["next_offset"] is None
+    assert page2["members"][0]["symbol"] == "WT1"
+    # Pages partition the membership: no overlap, no skips.
+    assert page1["members"][0]["hgnc_id"] != page2["members"][0]["hgnc_id"]
+
+
+def test_gene_group_offset_past_end(service: HgncService) -> None:
+    out = service.get_gene_group("9990", limit=5, offset=10)
+    assert out["returned"] == 0
+    assert out["truncated"] is False
+    assert out["next_offset"] is None
 
 
 def test_resolve_batch(service: HgncService) -> None:

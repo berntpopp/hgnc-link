@@ -65,6 +65,19 @@ async def test_cross_references_tool(facade: Any, structured: Any) -> None:
     assert "ensembl_gene_id" in payload["cross_references"]
 
 
+async def test_cross_references_compact_includes_high_value(facade: Any, structured: Any) -> None:
+    # The finding-#4 fields (MANE/UniProt/OMIM) must be present in the default tier.
+    payload = structured(await facade.call_tool("get_gene_cross_references", {"query": "BRAF"}))
+    assert {"mane_select", "uniprot_ids", "omim_id"} <= set(payload["cross_references"])
+    assert payload["response_mode"] == "compact"
+    full = structured(
+        await facade.call_tool(
+            "get_gene_cross_references", {"query": "BRAF", "response_mode": "full"}
+        )
+    )
+    assert payload["database_count"] < full["database_count"]
+
+
 async def test_cross_references_unknown_db_envelope(facade: Any, structured: Any) -> None:
     payload = structured(
         await facade.call_tool(
@@ -74,6 +87,27 @@ async def test_cross_references_unknown_db_envelope(facade: Any, structured: Any
     assert payload["success"] is False
     assert payload["error_code"] == "invalid_input"
     assert payload["field"] == "databases"
+
+
+async def test_cross_references_friendly_filter_resolves(facade: Any, structured: Any) -> None:
+    # Finding #2 lock: a friendly token ('mane') resolves to the field, not silent-empty.
+    payload = structured(
+        await facade.call_tool(
+            "get_gene_cross_references", {"query": "BRAF", "databases": ["mane"]}
+        )
+    )
+    assert payload["success"] is True
+    assert "mane_select" in payload["cross_references"]
+    assert payload["database_count"] == 1
+
+
+async def test_withdrawn_redirect_by_id_form(facade: Any, structured: Any) -> None:
+    # Blocker-class lock: a withdrawn entry via HGNC id must not trip a null-field crash.
+    payload = structured(await facade.call_tool("resolve_symbol", {"query": "HGNC:6"}))
+    assert payload["success"] is False
+    assert payload["error_code"] == "not_found"
+    assert payload["obsolete"] is True
+    assert payload["replaced_by"][0]["symbol"] == "UBA1"
 
 
 async def test_lookup_by_xref_tool(facade: Any, structured: Any) -> None:
@@ -115,6 +149,18 @@ async def test_gene_group_tool(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("get_gene_group", {"group": "1157"}))
     assert payload["group_name"] == "RAF family"
     assert any(m["symbol"] == "BRAF" for m in payload["members"])
+
+
+async def test_gene_group_pagination_next_command(facade: Any, structured: Any) -> None:
+    payload = structured(await facade.call_tool("get_gene_group", {"group": "9990", "limit": 1}))
+    assert payload["truncated"] is True
+    assert payload["next_offset"] == 1
+    nxt = [
+        c
+        for c in payload["_meta"]["next_commands"]
+        if c["tool"] == "get_gene_group" and c["arguments"].get("offset") == 1
+    ]
+    assert nxt and nxt[0]["arguments"]["limit"] == 1
 
 
 async def test_batch_tool(facade: Any, structured: Any) -> None:

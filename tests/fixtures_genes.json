@@ -236,10 +236,12 @@
     "entrez_id": "203068",
     "gencc": "HGNC:20778",
     "gene_group": [
-     "Tubulin beta family"
+     "Tubulin beta family",
+     "Pagination test family"
     ],
     "gene_group_id": [
-     3661
+     3661,
+     9990
     ],
     "hgnc_id": "HGNC:20778",
     "iuphar": "HGNC:20778",
@@ -306,10 +308,12 @@
     "entrez_id": "7490",
     "gencc": "HGNC:12796",
     "gene_group": [
-     "Zinc fingers C2H2-type"
+     "Zinc fingers C2H2-type",
+     "Pagination test family"
     ],
     "gene_group_id": [
-     28
+     28,
+     9990
     ],
     "hgnc_id": "HGNC:12796",
     "location": "11p13",

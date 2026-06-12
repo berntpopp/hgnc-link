@@ -11,6 +11,23 @@ async def test_every_tool_declares_output_schema(facade: Any) -> None:
     assert all(t.output_schema is not None for t in tools)
 
 
+async def test_batch_queries_schema_capped_at_200(facade: Any) -> None:
+    # The 200-cap should be visible in the published schema (client-side parity).
+    tool = await facade.get_tool("resolve_symbols_batch")
+    queries = tool.parameters["properties"]["queries"]
+    assert queries["maxItems"] == 200
+
+
+async def test_batch_overflow_returns_helpful_envelope(facade: Any, structured: Any) -> None:
+    payload = structured(
+        await facade.call_tool("resolve_symbols_batch", {"queries": ["BRAF"] * 201})
+    )
+    assert payload["success"] is False
+    assert payload["error_code"] == "invalid_input"
+    assert payload["field"] == "queries"
+    assert "200" in (payload["message"] + str(payload.get("hint", "")))
+
+
 async def test_structured_content_and_textcontent_fallback(facade: Any) -> None:
     res = await facade.call_tool("resolve_symbol", {"query": "BRAF"})
     assert isinstance(res.structured_content, dict)

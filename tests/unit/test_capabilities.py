@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from hgnc_link.mcp.capabilities import (
     TOOLS,
     build_capabilities,
@@ -27,6 +29,37 @@ def test_capabilities_documents_ambiguity_contract() -> None:
     assert "batch" in cap["ambiguity_contract"].lower()
     assert "cross_reference_filter_synonyms" in cap
     assert "mane" in cap["cross_reference_filter_synonyms"]
+
+
+def test_capabilities_documents_xref_tiers() -> None:
+    cap = build_capabilities()
+    tiers = cap["cross_reference_tiers"]
+    assert tiers["minimal"] == ["entrez_id", "ensembl_gene_id"]
+    assert "mane_select" in tiers["compact"]
+    assert tiers["standard"] == "all populated fields"
+
+
+def test_capabilities_documents_argument_alias_policy() -> None:
+    cap = build_capabilities()
+    assert "argument_alias_policy" in cap
+    policy = cap["argument_alias_policy"].lower()
+    assert "server" in policy and "canonical" in policy
+
+
+def test_capabilities_documents_search_semantics() -> None:
+    cap = build_capabilities()
+    assert "search_semantics" in cap
+    assert "nomenclature" in cap["search_semantics"].lower()
+
+
+def test_capabilities_surfaces_build_provenance(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The live finding was unknown/null build provenance in the capabilities surface.
+    monkeypatch.setenv("HGNC_LINK_GIT_SHA", "abc123def456")
+    monkeypatch.setenv("HGNC_LINK_BUILT_AT", "2026-06-12T00:00:00+00:00")
+    cap = build_capabilities()
+    assert cap["build"]["git_sha"] == "abc123def456"
+    assert cap["build"]["built_at"] == "2026-06-12T00:00:00+00:00"
+    assert cap["build"]["version"]
 
 
 def test_project_summary_vs_full() -> None:
