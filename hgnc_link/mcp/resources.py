@@ -22,7 +22,7 @@ HGNC_SERVER_INSTRUCTIONS = (
     "- Records: get_gene(query=) returns the full record (also alias/previous "
     "aware). search_genes(query=, limit=) is FTS over symbol/name/alias/previous.\n"
     "- Cross-references: get_gene_cross_references(query=, databases=) maps a gene "
-    "to NCBI/Ensembl/UniProt/RefSeq/OMIM/MANE/etc; lookup_by_xref(source=, value=) "
+    "to NCBI/Ensembl/UniProt/RefSeq/OMIM/MANE/etc; resolve_gene_by_xref(source=, value=) "
     "is the reverse (e.g. ensembl_gene_id -> gene). get_gene_group(group=) browses "
     "a gene family by id or name.\n"
     "- Verbosity: every tool takes response_mode (minimal | compact | standard | "
@@ -39,7 +39,7 @@ HGNC_SERVER_INSTRUCTIONS = (
 HGNC_USAGE_NOTES = (
     "Start with resolve_symbol to normalise any gene name/id to its approved HGNC "
     "symbol + id, then get_gene for the full record and get_gene_cross_references "
-    "for external ids. Use search_genes for free text, lookup_by_xref to go from an "
+    "for external ids. Use search_genes for free text, resolve_gene_by_xref to go from an "
     "external id back to HGNC, and get_gene_group to browse a family. Follow "
     "_meta.next_commands to advance without guessing the next tool. resolve_symbol "
     "carries match_type (current/previous/alias/hgnc_id) so you know whether the "

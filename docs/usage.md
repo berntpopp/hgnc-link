@@ -11,7 +11,7 @@
 | `get_gene` | Full record for one gene (alias/previous aware). |
 | `search_genes` | Free-text / partial search. |
 | `get_gene_cross_references` | Gene → external DB IDs (NCBI/Ensembl/UniProt/RefSeq/MANE/OMIM/…). |
-| `lookup_by_xref` | External ID → HGNC gene (reverse). |
+| `resolve_gene_by_xref` | External ID → HGNC gene (reverse). |
 | `get_gene_group` | Browse a gene family by group ID or name. |
 
 ## Canonical workflows
@@ -38,8 +38,8 @@ get_gene_cross_references(query="HGNC:1097")
 
 **External ID → gene**
 ```
-lookup_by_xref(source="ensembl_gene_id", value="ENSG00000157764") → BRAF
-lookup_by_xref(source="entrez_id", value="7157") → TP53
+resolve_gene_by_xref(source="ensembl_gene_id", value="ENSG00000157764") → BRAF
+resolve_gene_by_xref(source="entrez_id", value="7157") → TP53
 ```
 
 **Gene family**

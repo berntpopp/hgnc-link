@@ -110,18 +110,18 @@ async def test_withdrawn_redirect_by_id_form(facade: Any, structured: Any) -> No
     assert payload["replaced_by"][0]["symbol"] == "UBA1"
 
 
-async def test_lookup_by_xref_tool(facade: Any, structured: Any) -> None:
+async def test_resolve_gene_by_xref_tool(facade: Any, structured: Any) -> None:
     payload = structured(
         await facade.call_tool(
-            "lookup_by_xref", {"source": "ensembl_gene_id", "value": "ENSG00000157764"}
+            "resolve_gene_by_xref", {"source": "ensembl_gene_id", "value": "ENSG00000157764"}
         )
     )
     assert payload["results"][0]["symbol"] == "BRAF"
 
 
-async def test_lookup_by_xref_unknown_source(facade: Any, structured: Any) -> None:
+async def test_resolve_gene_by_xref_unknown_source(facade: Any, structured: Any) -> None:
     payload = structured(
-        await facade.call_tool("lookup_by_xref", {"source": "bogus", "value": "x"})
+        await facade.call_tool("resolve_gene_by_xref", {"source": "bogus", "value": "x"})
     )
     assert payload["error_code"] == "invalid_input"
     assert payload["field"] == "source"
@@ -175,7 +175,7 @@ async def test_ensembl_id_to_resolve_hints_xref(facade: Any, structured: Any) ->
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "ENSG00000999999"}))
     assert payload["success"] is False
     tools = [c["tool"] for c in payload["_meta"]["next_commands"]]
-    assert "lookup_by_xref" in tools
+    assert "resolve_gene_by_xref" in tools
 
 
 async def test_resolve_ambiguous_is_structured_error(facade: Any, structured: Any) -> None:

@@ -10,7 +10,7 @@ _GENE_TOOLS = {
     "resolve_symbol",
     "get_gene",
     "get_gene_cross_references",
-    "lookup_by_xref",
+    "resolve_gene_by_xref",
     "get_gene_group",
 }
 
@@ -29,7 +29,7 @@ def default_error_next_commands(
         source = infer_xref_source(value)
         if source:
             return [
-                cmd("lookup_by_xref", source=source, value=value),
+                cmd("resolve_gene_by_xref", source=source, value=value),
                 cmd("search_genes", query=value),
             ]
         if value and looks_like_symbol(value):
@@ -77,7 +77,7 @@ def after_search(query: str, hits: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 
 def after_xref(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """After lookup_by_xref: fetch the first matched gene."""
+    """After resolve_gene_by_xref: fetch the first matched gene."""
     if not results:
         return [cmd("get_server_capabilities")]
     first = results[0].get("hgnc_id")
