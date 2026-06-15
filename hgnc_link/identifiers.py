@@ -13,7 +13,7 @@ _HGNC_ID_RE = re.compile(r"^HGNC:(\d+)$", re.IGNORECASE)
 _BARE_ID_RE = re.compile(r"^\d+$")
 _SYMBOL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@/-]{0,63}$")
 
-# External-identifier shapes recognised so resolve_* can redirect to lookup_by_xref.
+# External-identifier shapes recognised so resolve_* can redirect to resolve_gene_by_xref.
 # Only ids the reverse lookup can actually resolve are mapped (ENST transcripts,
 # which the gene-id index cannot match, deliberately return None).
 _ENSG_RE = re.compile(r"^ENSG\d{6,}", re.IGNORECASE)
@@ -51,10 +51,10 @@ def looks_like_symbol(value: str) -> bool:
 
 
 def infer_xref_source(value: str) -> str | None:
-    """Map an external-id-shaped string to a ``lookup_by_xref`` source, or ``None``.
+    """Map an external-id-shaped string to a ``resolve_gene_by_xref`` source, or ``None``.
 
     Lets a symbol-resolution miss redirect the caller to the reverse-mapping tool
-    (e.g. an Ensembl gene id thrown at ``resolve_symbol`` -> ``lookup_by_xref``).
+    (e.g. an Ensembl gene id thrown at ``resolve_symbol`` -> ``resolve_gene_by_xref``).
     """
     text = (value or "").strip()
     if _ENSG_RE.match(text):

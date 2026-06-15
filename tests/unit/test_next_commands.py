@@ -64,6 +64,6 @@ def test_default_error_next_commands() -> None:
     )
     # fallback
     assert (
-        default_error_next_commands("lookup_by_xref", "internal_error", {})[0]["tool"]
+        default_error_next_commands("resolve_gene_by_xref", "internal_error", {})[0]["tool"]
         == "get_server_capabilities"
     )

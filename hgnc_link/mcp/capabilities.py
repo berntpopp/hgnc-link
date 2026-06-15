@@ -67,7 +67,7 @@ TOOLS: list[str] = [
     "get_gene",
     "search_genes",
     "get_gene_cross_references",
-    "lookup_by_xref",
+    "resolve_gene_by_xref",
     "get_gene_group",
 ]
 
@@ -136,12 +136,12 @@ def build_capabilities() -> dict[str, Any]:
             "and previous-symbol only (relevance-ranked). It has NO disease/phenotype "
             "semantics: a descriptive query like 'polycystin kidney' will not surface "
             "PKD1/PKD2 unless those words appear in the gene's nomenclature. Use an "
-            "exact symbol/id with resolve_symbol, or an external id with lookup_by_xref."
+            "exact symbol/id with resolve_symbol, or an external id with resolve_gene_by_xref."
         ),
         "recommended_workflows": [
             "any symbol/id -> resolve_symbol -> get_gene -> get_gene_cross_references",
             "outdated/alias symbol -> resolve_symbol (match_type tells you previous vs alias)",
-            "external id (ensembl/entrez/uniprot/omim) -> lookup_by_xref -> get_gene",
+            "external id (ensembl/entrez/uniprot/omim) -> resolve_gene_by_xref -> get_gene",
             "free text -> search_genes -> get_gene",
             "gene family -> get_gene_group (by id or name)",
             "many symbols at once -> resolve_symbols_batch",

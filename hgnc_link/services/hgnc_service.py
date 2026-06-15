@@ -238,7 +238,7 @@ class HgncService:
                 source = infer_xref_source(query)
                 if source:
                     entry["hint"] = (
-                        f"Looks like a {source} id; try lookup_by_xref(source='{source}')."
+                        f"Looks like a {source} id; try resolve_gene_by_xref(source='{source}')."
                     )
                 results.append(entry)
         return {

@@ -50,12 +50,18 @@ timer.
 | `get_gene` | Full HGNC record (alias/previous aware). |
 | `search_genes` | FTS over symbol/name/alias/previous symbols. |
 | `get_gene_cross_references` | Gene → NCBI/Ensembl/UniProt/RefSeq/MANE/OMIM/… |
-| `lookup_by_xref` | External ID → HGNC gene (reverse mapping). |
+| `resolve_gene_by_xref` | External ID → HGNC gene (reverse mapping). |
 | `get_gene_group` | Browse a gene family by group ID or name. |
 
 Every response carries `_meta.next_commands` (a ready-to-call `{tool, arguments}`
 list) on success **and** error. Response verbosity is controlled by
 `response_mode ∈ {minimal, compact, standard, full}` (default `compact`).
+
+**Federation:** the `serverInfo.name` is `hgnc-link`, and leaf tool names are
+intentionally unprefixed per the GeneFoundry Tool-Naming Standard v1. The
+canonical gateway **namespace token** is `hgnc`; when federated behind
+`genefoundry-router`, tools surface as `hgnc_<tool>` (e.g. `hgnc_resolve_symbol`,
+`hgnc_resolve_gene_by_xref`).
 
 ## Quick start
 

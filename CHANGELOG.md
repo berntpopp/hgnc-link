@@ -6,6 +6,36 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-15
+
+### Breaking — GeneFoundry Tool-Naming Standard v1
+
+Adopted the GeneFoundry Tool-Naming & Normalization Standard v1 so this server
+composes cleanly behind `genefoundry-router` (see berntpopp/hgnc-link#1). Leaf
+tool names stay **unprefixed**; the canonical gateway **namespace token** is
+`hgnc` (tools surface as `hgnc_<tool>` once federated).
+
+- **Renamed tool `lookup_by_xref` → `resolve_gene_by_xref`.** `lookup` is a
+  non-canonical verb under Standard v1 (rule 2: `lookup → get`/`resolve`); the
+  canonical verb set is `get | search | list | resolve | find | compare |
+  compute`. This is a reverse identifier resolution (external id → HGNC gene),
+  so `resolve_*` fits. **No deprecation alias is provided** (rule 7).
+
+  **Migration:** replace any call to `lookup_by_xref(source=, value=,
+  response_mode=)` with `resolve_gene_by_xref(source=, value=, response_mode=)`.
+  Arguments and behaviour are unchanged.
+
+The other eight tools were already compliant (unprefixed, `verb_noun`,
+canonical verb, ≤ 50 chars, domain-tagged, fleet-canon `response_mode`/`limit`/
+`offset` args), so no further renames were needed.
+
+### Added (Tool-Naming Standard v1)
+- CI guard `tests/unit/test_tool_names.py` asserting every registered tool name
+  matches `^[a-z0-9_]{1,50}$`, starts with a canonical verb, and does not
+  self-prefix the `hgnc` namespace token.
+- README documents the `serverInfo.name` (`hgnc-link`) and the canonical gateway
+  namespace token (`hgnc`).
+
 ### Changed (excellence pass v2 — live-assessment residual gaps)
 - **`get_gene_cross_references` `response_mode` tiers are now meaningful.** The
   tool previously returned every populated xref in every mode (so `response_mode`
@@ -64,7 +94,7 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ### Added
 - Cross-tool hints: an external id (ENSG / UniProt / RefSeq) thrown at
-  `resolve_symbol` / `resolve_symbols_batch` now suggests `lookup_by_xref`.
+  `resolve_symbol` / `resolve_symbols_batch` now suggests `resolve_gene_by_xref`.
 - Build provenance (`git_sha`, `built_at`) resolves from `.git` in a checkout and
   from Docker build args in production, so a running server can report its build.
 

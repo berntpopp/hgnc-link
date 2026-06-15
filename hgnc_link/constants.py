@@ -77,7 +77,7 @@ XREF_FIELDS: tuple[tuple[str, str], ...] = (
     ("pubmed_id", "PubMed"),
 )
 
-#: Reverse-lookup map for lookup_by_xref: accepted ``source`` synonym -> the HGNC
+#: Reverse-lookup map for resolve_gene_by_xref: accepted ``source`` synonym -> the HGNC
 #: field whose index is searched. Values are matched case-insensitively.
 XREF_SOURCE_ALIASES: dict[str, str] = {
     "entrez_id": "entrez_id",

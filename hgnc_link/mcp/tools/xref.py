@@ -1,4 +1,4 @@
-"""Reverse cross-reference lookup tool: lookup_by_xref."""
+"""Reverse cross-reference lookup tool: resolve_gene_by_xref."""
 
 from __future__ import annotations
 
@@ -21,8 +21,8 @@ def register_xref_tools(mcp: FastMCP) -> None:
     """Register the reverse cross-reference lookup tool."""
 
     @mcp.tool(
-        name="lookup_by_xref",
-        title="Lookup Gene by Cross-Reference",
+        name="resolve_gene_by_xref",
+        title="Resolve Gene by Cross-Reference",
         annotations=READ_ONLY_OPEN_WORLD,
         output_schema=XREF_LOOKUP_SCHEMA,
         tags={"xref"},
@@ -31,10 +31,10 @@ def register_xref_tools(mcp: FastMCP) -> None:
             "database id. source is the database (entrez_id/ncbi, ensembl_gene_id, "
             "uniprot, refseq, omim, ucsc, vega, ccds, mgi, rgd) and value is the id "
             "(e.g. source='ensembl_gene_id', value='ENSG00000157764'). "
-            "Signature: lookup_by_xref(source, value, response_mode=)."
+            "Signature: resolve_gene_by_xref(source, value, response_mode=)."
         ),
     )
-    async def lookup_by_xref(
+    async def resolve_gene_by_xref(
         source: Annotated[
             str,
             Field(
@@ -50,7 +50,9 @@ def register_xref_tools(mcp: FastMCP) -> None:
             return payload
 
         return await run_mcp_tool(
-            "lookup_by_xref",
+            "resolve_gene_by_xref",
             call,
-            context=McpErrorContext("lookup_by_xref", arguments={"source": source, "value": value}),
+            context=McpErrorContext(
+                "resolve_gene_by_xref", arguments={"source": source, "value": value}
+            ),
         )

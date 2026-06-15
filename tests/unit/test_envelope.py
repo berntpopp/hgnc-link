@@ -68,7 +68,9 @@ async def test_invalid_input_carries_field_allowed_hint() -> None:
     async def call() -> dict[str, object]:
         raise InvalidInputError("bad", field="source", allowed=["a", "b"], hint="use a")
 
-    out = await run_mcp_tool("lookup_by_xref", call, context=McpErrorContext("lookup_by_xref"))
+    out = await run_mcp_tool(
+        "resolve_gene_by_xref", call, context=McpErrorContext("resolve_gene_by_xref")
+    )
     assert out["field"] == "source"
     assert out["allowed_values"] == ["a", "b"]
     assert out["hint"] == "use a"
