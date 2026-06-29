@@ -6,6 +6,14 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Adopt the GeneFoundry Container & Deployment Hardening Standard v1: digest-pinned
+  base image, `.dockerignore`, read-only rootfs + tmpfs scratch + writable data
+  volume, `cap_drop: ALL`, `no-new-privileges`, `init`, mem/cpu/pids limits across
+  the base compose, a new expose-only `docker-compose.prod.yml`, and a CI container
+  scan + SBOM workflow (Trivy).
+
 ## [1.0.0] - 2026-06-15
 
 ### Breaking — GeneFoundry Tool-Naming Standard v1
