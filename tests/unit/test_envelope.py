@@ -48,7 +48,12 @@ async def test_lean_meta() -> None:
         return {"x": 1, "_meta": {"next_commands": []}}
 
     out = await run_mcp_tool("t", call, context=McpErrorContext("t"))
-    assert set(out["_meta"]) <= {"tool", "request_id", "next_commands"}
+    assert set(out["_meta"]) <= {
+        "tool",
+        "request_id",
+        "next_commands",
+        "unsafe_for_clinical_use",
+    }
 
 
 async def test_error_is_returned_not_raised() -> None:
