@@ -6,6 +6,15 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Emit `_meta.unsafe_for_clinical_use: true` on every tool response (success
+  and error, at all `response_mode`s) per the fleet-wide Response-Envelope
+  Standard v1 disclaimer-standardization decision (2026-07-03). Additive
+  only — no envelope restructure, no version bump. The full research-use
+  disclaimer text, citation, and HGNC release still live once in
+  `get_server_capabilities`.
+
 ### Security
 
 - Adopt the GeneFoundry Container & Deployment Hardening Standard v1: digest-pinned
