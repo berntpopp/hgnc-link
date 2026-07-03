@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastmcp import FastMCP
 
+from hgnc_link import __version__
 from hgnc_link.mcp.capabilities import register_capability_resources
 from hgnc_link.mcp.middleware import ArgValidationMiddleware
 from hgnc_link.mcp.resources import HGNC_SERVER_INSTRUCTIONS
@@ -20,6 +21,7 @@ def create_hgnc_mcp() -> FastMCP:
     """Build a FastMCP instance with all hgnc-link tools and resources."""
     mcp = FastMCP(
         name="hgnc-link",
+        version=__version__,
         instructions=HGNC_SERVER_INSTRUCTIONS,
         mask_error_details=True,
     )
