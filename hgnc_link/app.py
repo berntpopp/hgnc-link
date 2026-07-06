@@ -12,6 +12,7 @@ from hgnc_link import __version__
 from hgnc_link.buildinfo import build_info
 from hgnc_link.config import settings
 from hgnc_link.logging_config import configure_logging
+from hgnc_link.mcp.service_adapters import aclose_hgnc_service
 from hgnc_link.services.refresh import (
     bootstrap_data,
     start_refresh_scheduler,
@@ -33,6 +34,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         yield
     finally:
         await stop_refresh_scheduler(refresh_task)
+        await aclose_hgnc_service()
         logger.info("hgnc-link shutting down")
 
 

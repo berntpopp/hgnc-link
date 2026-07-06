@@ -47,6 +47,19 @@ def reset_hgnc_service() -> None:
     _service = None
 
 
+async def aclose_hgnc_service() -> None:
+    """Close the singleton's optional REST client on shutdown and drop it.
+
+    The live fallback is off by default (unwired dead code), but if it is opted
+    in the constructed httpx client must be closed on lifespan shutdown so its
+    connection pool is not leaked. Safe to call when no service was built.
+    """
+    global _service
+    if _service is not None:
+        await _service.aclose()
+        _service = None
+
+
 def set_hgnc_service(service: HgncService | None) -> None:
     """Override the singleton (used by tests)."""
     global _service

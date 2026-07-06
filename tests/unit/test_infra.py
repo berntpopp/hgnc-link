@@ -67,6 +67,42 @@ def test_service_adapter_singleton_and_reset(
     adapters.set_hgnc_service(None)
 
 
+def test_live_fallback_off_by_default_no_leaked_client(
+    monkeypatch: pytest.MonkeyPatch, built_db: Path
+) -> None:
+    # Finding M6/D9: the unwired live REST fallback must default OFF so that
+    # ``_build_service`` never constructs (and then leaks, never-closed) an httpx client.
+    import hgnc_link.mcp.service_adapters as adapters
+
+    assert HgncApiConfig().enable_live_fallback is False
+    monkeypatch.setattr(adapters.settings, "api", HgncApiConfig())
+    monkeypatch.setattr(adapters.settings.data, "data_dir", built_db.parent)
+    monkeypatch.setattr(adapters.settings.data, "db_filename", built_db.name)
+    svc = adapters._build_service()
+    assert svc._rest is None
+    assert svc.get_diagnostics()["live_fallback_enabled"] is False
+
+
+async def test_aclose_hgnc_service_closes_rest_client() -> None:
+    # Finding M6/D9: when the opt-in fallback client is built, shutdown must close it
+    # so the httpx connection pool is not leaked.
+    import hgnc_link.mcp.service_adapters as adapters
+
+    closed = {"count": 0}
+
+    class _FakeRest:
+        async def aclose(self) -> None:
+            closed["count"] += 1
+
+    svc = HgncService(None, rest_client=_FakeRest())  # type: ignore[arg-type]
+    adapters.set_hgnc_service(svc)
+    try:
+        await adapters.aclose_hgnc_service()
+        assert closed["count"] == 1
+    finally:
+        adapters.set_hgnc_service(None)
+
+
 def test_api_config_user_agent() -> None:
     cfg = HgncApiConfig(contact_email="x@y.org")
     assert "mailto:x@y.org" in cfg.user_agent
