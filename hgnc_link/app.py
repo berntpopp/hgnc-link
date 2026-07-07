@@ -12,6 +12,7 @@ from hgnc_link import __version__
 from hgnc_link.buildinfo import build_info
 from hgnc_link.config import settings
 from hgnc_link.logging_config import configure_logging
+from hgnc_link.mcp.service_adapters import aclose_hgnc_service
 from hgnc_link.services.refresh import (
     bootstrap_data,
     start_refresh_scheduler,
@@ -20,6 +21,27 @@ from hgnc_link.services.refresh import (
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+
+# Backends are unauthenticated by design (edge auth lives at the router), so CORS
+# credentials are meaningless. Keep them off; wiring them back on with a wildcard
+# origin is a footgun the startup guard below rejects.
+_CORS_ALLOW_CREDENTIALS = False
+
+
+def _validate_cors(origins: list[str], allow_credentials: bool) -> None:
+    """Fail closed on the unsafe wildcard-origin + credentials CORS combination.
+
+    An unauthenticated backend holds no cookies/session, so credentials are
+    pointless; combined with a ``*`` origin they are also forbidden by the CORS
+    spec. Reject that combination at startup rather than silently shipping a
+    permissive policy.
+    """
+    if allow_credentials and "*" in origins:
+        raise ValueError(
+            "CORS misconfiguration: allow_credentials=True with a wildcard '*' "
+            "origin. Backends are unauthenticated by design; disable credentials "
+            "or pin explicit origins."
+        )
 
 
 @asynccontextmanager
@@ -33,6 +55,7 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         yield
     finally:
         await stop_refresh_scheduler(refresh_task)
+        await aclose_hgnc_service()
         logger.info("hgnc-link shutting down")
 
 
@@ -48,10 +71,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    _validate_cors(settings.cors_origins, _CORS_ALLOW_CREDENTIALS)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
-        allow_credentials=True,
+        allow_credentials=_CORS_ALLOW_CREDENTIALS,
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )

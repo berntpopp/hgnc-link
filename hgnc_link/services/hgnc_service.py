@@ -40,6 +40,15 @@ _XREF_LABELS = dict(XREF_FIELDS)
 class HgncService:
     """High-level HGNC operations backed by the local SQLite index."""
 
+    # Finding M6/D9: the live REST fallback is NOT wired into any operation yet --
+    # resolve/get_gene/search all go through ``self.repo`` and never touch
+    # ``self._rest``. Until the fallback path is implemented, diagnostics must not
+    # claim it is enabled just because a client object exists.
+    # Follow-up: before flipping this to True, wire the fallback through a
+    # ``field``-path allowlist guarding HgncRestClient.fetch/search
+    # (see api/client.py:87,92) so untrusted field names cannot reach the REST API.
+    _LIVE_FALLBACK_WIRED: bool = False
+
     def __init__(
         self,
         repository: HgncRepository | None,
@@ -49,6 +58,15 @@ class HgncService:
         """Wire a repository (primary) and an optional REST client (fallback)."""
         self._repo = repository
         self._rest = rest_client
+
+    def _live_fallback_enabled(self) -> bool:
+        """True only when a REST client exists AND the fallback path is wired in."""
+        return self._rest is not None and self._LIVE_FALLBACK_WIRED
+
+    async def aclose(self) -> None:
+        """Release the optional REST client (its httpx pool) so it is not leaked."""
+        if self._rest is not None:
+            await self._rest.aclose()
 
     @property
     def repo(self) -> HgncRepository:
@@ -66,7 +84,7 @@ class HgncService:
         if self._repo is None:
             return {
                 "data_available": False,
-                "live_fallback_enabled": self._rest is not None,
+                "live_fallback_enabled": self._live_fallback_enabled(),
                 "message": "Local HGNC index not built. Run `hgnc-link-data build`.",
             }
         meta = self._repo.get_meta()
@@ -79,7 +97,7 @@ class HgncService:
             "schema_version": meta.get("schema_version"),
             "source_last_modified": meta.get("source_last_modified"),
             "built_utc": meta.get("build_utc"),
-            "live_fallback_enabled": self._rest is not None,
+            "live_fallback_enabled": self._live_fallback_enabled(),
         }
 
     # -- resolution ------------------------------------------------------------

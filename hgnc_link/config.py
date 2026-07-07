@@ -143,10 +143,13 @@ class HgncApiConfig(BaseModel):
         description="Retry attempts for transient (429/5xx/network) REST failures.",
     )
     enable_live_fallback: bool = Field(
-        default=True,
+        default=False,
         description=(
-            "Allow tools to fall back to the live REST API when the local DB is "
-            "unavailable (e.g. before the first build completes)."
+            "Reserved for a live REST fallback when the local DB is unavailable "
+            "(e.g. before the first build completes). Default OFF: the fallback is "
+            "NOT yet wired into any tool (no service method calls the REST client), "
+            "so enabling it only constructs an unused client. Keep OFF until the "
+            "fallback path is implemented (see HgncService follow-up note)."
         ),
     )
 

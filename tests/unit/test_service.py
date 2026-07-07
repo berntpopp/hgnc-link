@@ -209,6 +209,17 @@ def test_diagnostics(service: HgncService) -> None:
     assert d["gene_count"] == 8
 
 
+def test_diagnostics_live_fallback_report_is_honest(service: HgncService) -> None:
+    # Finding M6/D9: the live REST fallback is dead code -- no service method calls
+    # ``self._rest`` -- so diagnostics must report it disabled even when a REST client
+    # object is attached, both with a repo and in the pre-build bootstrap window.
+    sentinel = object()  # stand-in client; never invoked because the path is unwired
+    with_client = HgncService(service.repo, rest_client=sentinel)  # type: ignore[arg-type]
+    assert with_client.get_diagnostics()["live_fallback_enabled"] is False
+    bootstrap = HgncService(None, rest_client=sentinel)  # type: ignore[arg-type]
+    assert bootstrap.get_diagnostics()["live_fallback_enabled"] is False
+
+
 def test_service_without_repo_raises_data_unavailable() -> None:
     svc = HgncService(None)
     with pytest.raises(DataUnavailableError):
