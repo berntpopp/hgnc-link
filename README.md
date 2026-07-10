@@ -73,6 +73,14 @@ make mcp-serve        # stdio MCP server (Claude Desktop)
 make test             # unit tests
 ```
 
+HTTP deployments enforce exact Host and Origin allowlists. Configure
+`HGNC_LINK_ALLOWED_HOSTS` as a JSON list containing the public reverse-proxy
+hostname in addition to loopback defaults; `HGNC_LINK_ALLOWED_ORIGINS` defaults
+to `[]`, which permits requests without an `Origin` header. Browser deployments
+must list an origin in both `HGNC_LINK_ALLOWED_ORIGINS` and
+`HGNC_LINK_CORS_ORIGINS`: request validation and CORS response headers are
+separate policies and neither one widens the other.
+
 Register with Claude Code (HTTP):
 
 ```bash
