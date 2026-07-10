@@ -6,6 +6,22 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-10
+
+### Security
+
+- Enforce exact configurable Host and Origin allowlists across every HTTP
+  route, with safe loopback defaults, wildcard rejection, explicit production
+  proxy hosts, and native FastMCP protection in depth. FastMCP is upgraded to
+  3.4.4 while preserving structured argument-validation error envelopes.
+
+### Changed (BREAKING)
+
+- Host and Origin admission is now default-deny outside the configured
+  loopback values. Non-loopback and reverse-proxy deployments must list their
+  exact public names in `HGNC_LINK_ALLOWED_HOSTS` and browser origins, when
+  used, in `HGNC_LINK_ALLOWED_ORIGINS`.
+
 ## [1.1.0] - 2026-07-10
 
 ### Added
