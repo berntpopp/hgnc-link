@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import httpx
@@ -15,8 +16,57 @@ from hgnc_link.ingest import downloader
 _URL = "https://example.test/hgnc_complete_set.json"
 
 
+class _ChunkedBody(httpx.SyncByteStream):
+    def __iter__(self) -> Iterator[bytes]:
+        yield b"1234"
+        yield b"56789"
+
+
 def _config(tmp_path: Path) -> HgncDataConfig:
     return HgncDataConfig(data_dir=tmp_path, complete_set_url=_URL)
+
+
+@respx.mock
+def test_bulk_overflow_preserves_old_file(tmp_path: Path) -> None:
+    cfg = HgncDataConfig(data_dir=tmp_path, complete_set_url=_URL, max_download_bytes=8)
+    destination = tmp_path / "complete.json"
+    destination.write_bytes(b"old")
+    respx.get(_URL).mock(return_value=httpx.Response(200, content=b"123456789"))
+    with pytest.raises(DownloadError, match="exceeded 8 bytes"):
+        downloader.download_file(cfg, _URL, "complete.json")
+    assert destination.read_bytes() == b"old"
+    assert list(tmp_path.glob("*.download.tmp")) == []
+
+
+@respx.mock
+def test_bulk_chunked_overflow_is_authoritative(tmp_path: Path) -> None:
+    cfg = HgncDataConfig(data_dir=tmp_path, complete_set_url=_URL, max_download_bytes=8)
+    destination = tmp_path / "complete.json"
+    destination.write_bytes(b"old")
+    respx.get(_URL).mock(return_value=httpx.Response(200, stream=_ChunkedBody()))
+    with pytest.raises(DownloadError, match="exceeded 8 bytes"):
+        downloader.download_file(cfg, _URL, "complete.json")
+    assert destination.read_bytes() == b"old"
+    assert list(tmp_path.glob("*.download.tmp")) == []
+
+
+@respx.mock
+def test_bulk_redirect_is_not_followed(tmp_path: Path) -> None:
+    target = respx.get("https://evil.example/complete.json").mock(
+        return_value=httpx.Response(200, content=b"evil")
+    )
+    respx.get(_URL).mock(
+        return_value=httpx.Response(
+            302,
+            headers={"Location": "https://evil.example/complete.json"},
+        )
+    )
+    destination = tmp_path / "complete.json"
+    destination.write_bytes(b"old")
+    with pytest.raises(DownloadError, match="302"):
+        downloader.download_file(_config(tmp_path), _URL, "complete.json")
+    assert target.called is False
+    assert destination.read_bytes() == b"old"
 
 
 @respx.mock

@@ -18,6 +18,38 @@ def _client() -> HgncRestClient:
 
 
 @respx.mock
+async def test_rest_redirect_is_not_followed() -> None:
+    target = respx.get("https://evil.example/info").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{_BASE}/info").mock(
+        return_value=httpx.Response(302, headers={"Location": "https://evil.example/info"})
+    )
+    client = _client()
+    with pytest.raises(ServiceUnavailableError, match="302"):
+        await client.info()
+    assert target.called is False
+    await client.aclose()
+
+
+@respx.mock
+async def test_injected_client_cannot_enable_redirects() -> None:
+    target = respx.get("https://evil.example/info").mock(return_value=httpx.Response(200, json={}))
+    respx.get(f"{_BASE}/info").mock(
+        return_value=httpx.Response(302, headers={"Location": "https://evil.example/info"})
+    )
+    injected = httpx.AsyncClient(base_url=_BASE, follow_redirects=True)
+    client = HgncRestClient(
+        HgncApiConfig(base_url=_BASE, max_retries=0),
+        client=injected,
+    )
+    try:
+        with pytest.raises(ServiceUnavailableError, match="302"):
+            await client.info()
+        assert target.called is False
+    finally:
+        await injected.aclose()
+
+
+@respx.mock
 async def test_fetch_parses_docs() -> None:
     respx.get(f"{_BASE}/fetch/symbol/BRAF").mock(
         return_value=httpx.Response(200, json={"response": {"docs": [{"hgnc_id": "HGNC:1097"}]}})
