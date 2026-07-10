@@ -32,6 +32,13 @@ async def test_resolve_alias_via_arg_alias(facade: Any, structured: Any) -> None
     assert payload["_meta"]["argument_aliases_applied"] == [["symbol", "query"]]
 
 
+async def test_unknown_argument_did_you_mean(facade: Any, structured: Any) -> None:
+    payload = structured(await facade.call_tool("resolve_symbol", {"querie": "BRAF"}))
+    assert payload["success"] is False
+    assert payload["error_code"] == "invalid_input"
+    assert "query" in payload["allowed_values"]
+
+
 async def test_get_gene_modes(facade: Any, structured: Any) -> None:
     full = structured(
         await facade.call_tool("get_gene", {"query": "BRAF", "response_mode": "full"})
