@@ -52,6 +52,22 @@ class HgncDataConfig(BaseModel):
         le=900,
         description="HTTP timeout (seconds) for downloading the bulk HGNC dumps.",
     )
+    max_download_bytes: int = Field(
+        default=128 << 20,
+        gt=0,
+        description=(
+            "Maximum bulk artifact size; measured below 64 MiB on 2026-07-10. "
+            "Override for a larger approved HGNC export."
+        ),
+    )
+    max_download_seconds: float = Field(
+        default=900.0,
+        gt=0,
+        description=(
+            "Maximum total bulk transfer time; measured below 450 seconds on 2026-07-10. "
+            "Override for slower approved links."
+        ),
+    )
     user_agent: str = Field(
         default=f"hgnc-link/{__version__} (+https://github.com/berntpopp/hgnc-link)",
         description="User-Agent sent to genenames.org / GCS.",

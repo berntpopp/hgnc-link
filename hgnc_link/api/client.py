@@ -46,7 +46,7 @@ class HgncRestClient:
         self._client = client or httpx.AsyncClient(
             base_url=config.base_url,
             timeout=httpx.Timeout(config.timeout),
-            follow_redirects=True,
+            follow_redirects=False,
             headers={
                 "Accept": "application/json",
                 "User-Agent": config.user_agent,
@@ -58,7 +58,7 @@ class HgncRestClient:
         for attempt in range(self._config.max_retries + 1):
             try:
                 async with self._semaphore:
-                    response = await self._client.get(path)
+                    response = await self._client.get(path, follow_redirects=False)
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 last_exc = ServiceUnavailableError(f"HGNC REST request failed: {exc}")
             else:
@@ -67,6 +67,10 @@ class HgncRestClient:
                 elif response.status_code in _RETRYABLE_STATUS:
                     last_exc = ServiceUnavailableError(
                         f"HGNC REST returned {response.status_code}."
+                    )
+                elif 300 <= response.status_code < 400:
+                    raise ServiceUnavailableError(
+                        f"HGNC REST returned unexpected redirect {response.status_code}."
                     )
                 elif response.status_code >= 400:
                     raise ServiceUnavailableError(
