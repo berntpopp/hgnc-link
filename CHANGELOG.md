@@ -6,6 +6,8 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-07-10
+
 ### Added
 
 - Emit `_meta.unsafe_for_clinical_use: true` on every tool response (success
@@ -22,6 +24,12 @@ All notable changes to hgnc-link are documented here. The format follows
   volume, `cap_drop: ALL`, `no-new-privileges`, `init`, mem/cpu/pids limits across
   the base compose, a new expose-only `docker-compose.prod.yml`, and a CI container
   scan + SBOM workflow (Trivy).
+
+### Fixed
+
+- Hardened ingest downloads with rejected redirects, configurable size and time
+  limits, atomic replacement, and preservation of the previous valid artifact
+  on transfer failure.
 
 ## [1.0.0] - 2026-06-15
 
