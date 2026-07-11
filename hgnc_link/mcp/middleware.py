@@ -21,6 +21,7 @@ from fastmcp.tools.tool import ToolResult
 from mcp.types import CallToolRequestParams, TextContent
 from pydantic import ValidationError as PydanticValidationError
 
+from hgnc_link.mcp._sanitize import safe_field_name
 from hgnc_link.mcp.arg_help import (
     describe_constraints,
     did_you_mean,
@@ -109,7 +110,11 @@ class ArgValidationMiddleware(Middleware):
             suggestion=suggestion,
             constraints=constraints,
         )
-        logger.warning("mcp_arg_error tool=%s loc=%s type=%s", name, loc, error_type)
+        # ``loc`` is a caller-controlled argument name; strip its forbidden code
+        # points before it reaches the log sink (no raw code points in logs).
+        logger.warning(
+            "mcp_arg_error tool=%s loc=%s type=%s", name, safe_field_name(loc), error_type
+        )
         return ToolResult(
             structured_content=envelope,
             content=[TextContent(type="text", text=json.dumps(envelope))],

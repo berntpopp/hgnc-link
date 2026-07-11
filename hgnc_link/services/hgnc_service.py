@@ -36,6 +36,12 @@ _MAX_BATCH = 200
 _MAX_CANDIDATES = 25
 _XREF_LABELS = dict(XREF_FIELDS)
 
+# Fixed classifications for resolve_batch item rows: these rows bypass the error
+# envelope, so must never carry str(exc) (it embeds the caller-supplied query).
+_BATCH_AMBIGUOUS_NOTE = "Ambiguous query; several genes share this symbol -- pick one candidate."
+_BATCH_INVALID_REASON = "Query was rejected as invalid input."
+_BATCH_NOT_FOUND_REASON = "No HGNC record matches this query."
+
 
 class HgncService:
     """High-level HGNC operations backed by the local SQLite index."""
@@ -243,7 +249,8 @@ class HgncService:
                         "ambiguous": True,
                         "candidate_count": len(exc.candidates),
                         "candidates": [shape_summary(c, mode) for c in exc.candidates],
-                        "note": str(exc),
+                        # Fixed classification, never str(exc) (bypass surface).
+                        "note": _BATCH_AMBIGUOUS_NOTE,
                     }
                 )
             except (NotFoundError, InvalidInputError) as exc:
@@ -251,7 +258,12 @@ class HgncService:
                     "query": query,
                     "hgnc_id": None,
                     "unresolved": True,
-                    "reason": str(exc),
+                    # Fixed typed classification, never str(exc) (bypass surface).
+                    "reason": (
+                        _BATCH_INVALID_REASON
+                        if isinstance(exc, InvalidInputError)
+                        else _BATCH_NOT_FOUND_REASON
+                    ),
                 }
                 source = infer_xref_source(query)
                 if source:

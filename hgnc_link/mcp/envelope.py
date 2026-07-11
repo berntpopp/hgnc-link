@@ -26,6 +26,7 @@ from hgnc_link.exceptions import (
     ServiceUnavailableError,
     WithdrawnEntryError,
 )
+from hgnc_link.mcp._sanitize import safe_field_name, sanitize_message
 from hgnc_link.mcp.next_commands import cmd, default_error_next_commands, withdrawn_recovery
 
 logger = logging.getLogger(__name__)
@@ -64,8 +65,38 @@ def _request_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
+# Pydantic error ``type`` -> fixed, input-free reason. The raw pydantic ``msg``
+# can echo the rejected input *value*, so it is never surfaced; only the bounded,
+# server-defined error ``type`` keys a server-authored reason.
+_PYDANTIC_REASON: dict[str, str] = {
+    "missing": "a required value is missing",
+    "string_type": "expected a string",
+    "int_type": "expected an integer",
+    "int_parsing": "expected an integer",
+    "float_type": "expected a number",
+    "bool_type": "expected a boolean",
+    "list_type": "expected a list",
+    "dict_type": "expected an object",
+    "too_long": "too many items",
+    "too_short": "too few items",
+    "string_too_long": "value is too long",
+    "string_too_short": "value is too short",
+    "greater_than": "value is out of range",
+    "greater_than_equal": "value is out of range",
+    "less_than": "value is out of range",
+    "less_than_equal": "value is out of range",
+    "enum": "value is not one of the allowed options",
+    "extra_forbidden": "unexpected argument",
+    "unexpected_keyword_argument": "unexpected argument",
+}
+
+
 def _safe_message(exc: BaseException) -> str:
-    return (str(exc) or exc.__class__.__name__)[:280]
+    # Server-authored classified messages: strip the fence's forbidden code
+    # points defensively. Attacker-influenceable *prose* (upstream bodies, the
+    # str(exc) of an API error) is severed to fixed strings at the source, so
+    # this backstop only has to remove control/zero-width/bidi/NUL code points.
+    return sanitize_message(str(exc) or exc.__class__.__name__)
 
 
 def _classify(exc: BaseException) -> tuple[str, str]:
@@ -86,8 +117,12 @@ def _classify(exc: BaseException) -> tuple[str, str]:
         return "upstream_unavailable", "The HGNC upstream is temporarily unavailable."
     if isinstance(exc, PydanticValidationError):
         first = exc.errors()[0]
-        loc = ".".join(str(p) for p in first["loc"]) or "input"
-        return "invalid_input", f"Invalid input -- `{loc}`: {first['msg']}"
+        loc = ".".join(str(p) for p in first.get("loc", ())) or "input"
+        # Never echo the pydantic ``msg`` (it can reflect the rejected input);
+        # key a fixed reason on the bounded error ``type`` and code-point-strip
+        # the caller-controlled field name.
+        reason = _PYDANTIC_REASON.get(str(first.get("type", "")), "value is invalid")
+        return "invalid_input", f"Invalid input -- `{safe_field_name(loc)}`: {reason}."
     return "internal_error", "An internal error occurred. The request was not completed."
 
 
@@ -104,7 +139,9 @@ def _error_envelope(exc: BaseException, context: McpErrorContext) -> dict[str, A
     envelope: dict[str, Any] = {
         "success": False,
         "error_code": error_code,
-        "message": message,
+        # Defensive: no forbidden code points reach the caller, whatever the path
+        # (McpToolError / fixed classified strings included).
+        "message": sanitize_message(message),
         "retryable": error_code in _RETRYABLE,
         "recovery_action": _recovery_action(error_code),
         "_meta": {
@@ -157,16 +194,21 @@ def build_arg_error_envelope(
     argument, so ``allowed_values`` carries the valid range/enum (not the list of
     argument *names*) and the message states the constraint.
     """
+    # ``loc`` is the caller-supplied argument NAME (attacker-influenceable for an
+    # unexpected/unknown key), so strip its forbidden code points before it is
+    # echoed into either the message or the ``field`` key. ``suggestion`` and
+    # ``signature`` are server-derived from the tool's real parameter set.
+    safe_loc = safe_field_name(loc)
     if constraints is not None:
         allowed, human = constraints
-        message = f"Invalid value for argument `{loc}` of {tool_name}: {human}."
+        message = f"Invalid value for argument `{safe_loc}` of {tool_name}: {human}."
         return {
             "success": False,
             "error_code": "invalid_input",
-            "message": message[:280],
+            "message": sanitize_message(message),
             "retryable": False,
             "recovery_action": "reformulate_input",
-            "field": loc,
+            "field": safe_loc,
             "allowed_values": allowed,
             "hint": signature,
             "_meta": {
@@ -177,20 +219,20 @@ def build_arg_error_envelope(
             },
         }
     if error_type == "missing_argument":
-        head = f"Missing required argument `{loc}` for {tool_name}."
+        head = f"Missing required argument `{safe_loc}` for {tool_name}."
     elif error_type == "unexpected_keyword_argument":
-        head = f"Unknown argument `{loc}` for {tool_name}."
+        head = f"Unknown argument `{safe_loc}` for {tool_name}."
     else:
-        head = f"Invalid value for argument `{loc}` of {tool_name}."
+        head = f"Invalid value for argument `{safe_loc}` of {tool_name}."
     dym = f" Did you mean `{suggestion}`?" if suggestion else ""
     message = f"{head}{dym} Valid argument names are listed in allowed_values."
     return {
         "success": False,
         "error_code": "invalid_input",
-        "message": message[:280],
+        "message": sanitize_message(message),
         "retryable": False,
         "recovery_action": "reformulate_input",
-        "field": loc,
+        "field": safe_loc,
         "allowed_values": valid_params,
         "hint": signature,
         "_meta": {

@@ -29,9 +29,13 @@ class HgncRepository:
     def __init__(self, db_path: Path | str) -> None:
         """Open a read-only connection to the HGNC database."""
         self._path = Path(db_path)
+        # Caller-visible messages are FIXED: the on-disk path and the raw sqlite
+        # ``str(exc)`` are internal detail (a local filesystem path) that must not
+        # reach the model through the ``data_unavailable`` envelope. The original
+        # cause is preserved via ``from exc`` for server-side tracebacks only.
         if not self._path.exists():
             raise DataUnavailableError(
-                f"HGNC database not found at {self._path}. Build it with `hgnc-link-data build`."
+                "The local HGNC index is not available. Build it with `hgnc-link-data build`."
             )
         try:
             self._conn = sqlite3.connect(
@@ -41,7 +45,7 @@ class HgncRepository:
             )
         except sqlite3.Error as exc:  # pragma: no cover - rare OS-level failure
             raise DataUnavailableError(
-                f"Cannot open HGNC database at {self._path}: {exc}."
+                "The local HGNC index could not be opened. Rebuild it with `hgnc-link-data build`."
             ) from exc
         self._conn.row_factory = sqlite3.Row
 
@@ -53,10 +57,12 @@ class HgncRepository:
             row = self._conn.execute("SELECT * FROM meta WHERE id = 1").fetchone()
         except sqlite3.Error as exc:
             raise DataUnavailableError(
-                f"HGNC database at {self._path} is unreadable: {exc}."
+                "The local HGNC index is unreadable. Rebuild it with `hgnc-link-data build`."
             ) from exc
         if row is None:
-            raise DataUnavailableError(f"HGNC database at {self._path} has no build metadata.")
+            raise DataUnavailableError(
+                "The local HGNC index has no build metadata. Rebuild it with `hgnc-link-data build`."
+            )
         return dict(row)
 
     # -- gene records ----------------------------------------------------------
