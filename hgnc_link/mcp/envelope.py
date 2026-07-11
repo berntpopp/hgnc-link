@@ -26,7 +26,8 @@ from hgnc_link.exceptions import (
     ServiceUnavailableError,
     WithdrawnEntryError,
 )
-from hgnc_link.mcp._sanitize import safe_field_name, sanitize_message
+from hgnc_link.identifiers import looks_like_hgnc_id
+from hgnc_link.mcp._sanitize import safe_field_name, sanitize_envelope, sanitize_message
 from hgnc_link.mcp.next_commands import cmd, default_error_next_commands, withdrawn_recovery
 
 logger = logging.getLogger(__name__)
@@ -65,65 +66,46 @@ def _request_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
-# Pydantic error ``type`` -> fixed, input-free reason. The raw pydantic ``msg``
-# can echo the rejected input *value*, so it is never surfaced; only the bounded,
-# server-defined error ``type`` keys a server-authored reason.
-_PYDANTIC_REASON: dict[str, str] = {
-    "missing": "a required value is missing",
-    "string_type": "expected a string",
-    "int_type": "expected an integer",
-    "int_parsing": "expected an integer",
-    "float_type": "expected a number",
-    "bool_type": "expected a boolean",
-    "list_type": "expected a list",
-    "dict_type": "expected an object",
-    "too_long": "too many items",
-    "too_short": "too few items",
-    "string_too_long": "value is too long",
-    "string_too_short": "value is too short",
-    "greater_than": "value is out of range",
-    "greater_than_equal": "value is out of range",
-    "less_than": "value is out of range",
-    "less_than_equal": "value is out of range",
-    "enum": "value is not one of the allowed options",
-    "extra_forbidden": "unexpected argument",
-    "unexpected_keyword_argument": "unexpected argument",
+# FIXED, error-code-specific public messages. The message NEVER interpolates the
+# caller's query/identifier or an upstream value: those carry injection prose that
+# survives code-point stripping (the deepest fleet-review lesson). The actionable
+# detail travels in structured, server-authored fields (field / allowed_values /
+# hint / candidates / next_commands); the raw exception text stays server-side.
+_PUBLIC_MESSAGE: dict[str, str] = {
+    "not_found": "The requested HGNC record was not found.",
+    "ambiguous_query": "The request matched several HGNC records; see candidates.",
+    "invalid_input": "The request was invalid. See field / allowed_values / hint.",
+    "data_unavailable": "The local HGNC database is unavailable.",
+    "rate_limited": "HGNC REST rate limit hit. Retry shortly.",
+    "upstream_unavailable": "The HGNC upstream is temporarily unavailable.",
+    "internal_error": "An internal error occurred. The request was not completed.",
 }
 
 
-def _safe_message(exc: BaseException) -> str:
-    # Server-authored classified messages: strip the fence's forbidden code
-    # points defensively. Attacker-influenceable *prose* (upstream bodies, the
-    # str(exc) of an API error) is severed to fixed strings at the source, so
-    # this backstop only has to remove control/zero-width/bidi/NUL code points.
-    return sanitize_message(str(exc) or exc.__class__.__name__)
-
-
 def _classify(exc: BaseException) -> tuple[str, str]:
-    """Return ``(error_code, client_safe_message)`` for an exception."""
+    """Return ``(error_code, fixed_public_message)`` for an exception.
+
+    Only ``McpToolError`` supplies its own message (server-authored, raised inside
+    a tool body); every other class maps to a FIXED public message so no caller
+    input or upstream value is ever echoed into a caller-visible string.
+    """
     if isinstance(exc, McpToolError):
         return exc.error_code, exc.message
     if isinstance(exc, NotFoundError):  # WithdrawnEntryError subclasses this
-        return "not_found", _safe_message(exc)
-    if isinstance(exc, AmbiguousQueryError):
-        return "ambiguous_query", _safe_message(exc)
-    if isinstance(exc, InvalidInputError):
-        return "invalid_input", _safe_message(exc)
-    if isinstance(exc, DataUnavailableError):
-        return "data_unavailable", _safe_message(exc)
-    if isinstance(exc, RateLimitError):
-        return "rate_limited", "HGNC REST rate limit hit. Retry shortly."
-    if isinstance(exc, ServiceUnavailableError | DownloadError):
-        return "upstream_unavailable", "The HGNC upstream is temporarily unavailable."
-    if isinstance(exc, PydanticValidationError):
-        first = exc.errors()[0]
-        loc = ".".join(str(p) for p in first.get("loc", ())) or "input"
-        # Never echo the pydantic ``msg`` (it can reflect the rejected input);
-        # key a fixed reason on the bounded error ``type`` and code-point-strip
-        # the caller-controlled field name.
-        reason = _PYDANTIC_REASON.get(str(first.get("type", "")), "value is invalid")
-        return "invalid_input", f"Invalid input -- `{safe_field_name(loc)}`: {reason}."
-    return "internal_error", "An internal error occurred. The request was not completed."
+        code = "not_found"
+    elif isinstance(exc, AmbiguousQueryError):
+        code = "ambiguous_query"
+    elif isinstance(exc, InvalidInputError | PydanticValidationError):
+        code = "invalid_input"
+    elif isinstance(exc, DataUnavailableError):
+        code = "data_unavailable"
+    elif isinstance(exc, RateLimitError):
+        code = "rate_limited"
+    elif isinstance(exc, ServiceUnavailableError | DownloadError):
+        code = "upstream_unavailable"
+    else:
+        code = "internal_error"
+    return code, _PUBLIC_MESSAGE[code]
 
 
 def _recovery_action(error_code: str) -> str:
@@ -150,6 +132,10 @@ def _error_envelope(exc: BaseException, context: McpErrorContext) -> dict[str, A
             "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
         },
     }
+    # Structured, server-authored detail fields (field names / allowed vocab /
+    # static hints); the candidate/withdrawn payloads come from the curated local
+    # index. Every next_command identifier is grammar-validated before it is
+    # echoed, and sanitize_tree() is the final whole-envelope code-point backstop.
     if isinstance(exc, InvalidInputError):
         if exc.field is not None:
             envelope["field"] = exc.field
@@ -159,23 +145,27 @@ def _error_envelope(exc: BaseException, context: McpErrorContext) -> dict[str, A
             envelope["hint"] = exc.hint
     if isinstance(exc, AmbiguousQueryError) and exc.candidates:
         envelope["candidates"] = exc.candidates
-        envelope["_meta"]["next_commands"] = [
-            cmd("get_gene", query=c["hgnc_id"]) for c in exc.candidates[:3] if c.get("hgnc_id")
-        ] or [cmd("get_server_capabilities")]
-        return envelope
-    if isinstance(exc, WithdrawnEntryError):
+        chain = [
+            cmd("get_gene", query=c["hgnc_id"])
+            for c in exc.candidates[:3]
+            if isinstance(c.get("hgnc_id"), str) and looks_like_hgnc_id(c["hgnc_id"])
+        ]
+        envelope["_meta"]["next_commands"] = chain or [cmd("get_server_capabilities")]
+    elif isinstance(exc, WithdrawnEntryError):
         envelope["obsolete"] = True
         envelope["withdrawn_status"] = exc.withdrawn_status
         envelope["replaced_by"] = exc.replaced_by
         envelope["_meta"]["next_commands"] = withdrawn_recovery(exc.replaced_by)
-        return envelope
-    if context.fallback is not None:
+    elif context.fallback is not None:
         envelope["_meta"]["next_commands"] = [context.fallback]
     else:
         envelope["_meta"]["next_commands"] = default_error_next_commands(
             context.tool_name, error_code, context.arguments
         )
-    return envelope
+    # Final code-point backstop over EVERY string leaf (message, field,
+    # allowed_values, hint, candidates, withdrawn_status, replaced_by, and
+    # _meta.next_commands[*].arguments.*), whichever branch built them.
+    return sanitize_envelope(envelope)
 
 
 def build_arg_error_envelope(
@@ -195,21 +185,35 @@ def build_arg_error_envelope(
     argument *names*) and the message states the constraint.
     """
     # ``loc`` is the caller-supplied argument NAME (attacker-influenceable for an
-    # unexpected/unknown key), so strip its forbidden code points before it is
-    # echoed into either the message or the ``field`` key. ``suggestion`` and
-    # ``signature`` are server-derived from the tool's real parameter set.
+    # unexpected/unknown key). It is NEVER interpolated into the message -- it is
+    # validated-or-redacted into the structured ``field`` key only. The message is
+    # built solely from server-derived values: ``tool_name``, the server-computed
+    # ``suggestion`` (always a real parameter name), ``signature``, and the
+    # schema-derived constraint ``human`` phrase.
     safe_loc = safe_field_name(loc)
+    dym = f" Did you mean `{suggestion}`?" if suggestion else ""
     if constraints is not None:
         allowed, human = constraints
-        message = f"Invalid value for argument `{safe_loc}` of {tool_name}: {human}."
-        return {
+        message = f"Invalid argument value for {tool_name}: {human}. See 'field'."
+        allowed_values = allowed
+    else:
+        if error_type == "missing_argument":
+            head = f"A required argument is missing for {tool_name}."
+        elif error_type == "unexpected_keyword_argument":
+            head = f"An unknown argument was supplied to {tool_name}."
+        else:
+            head = f"An argument value was invalid for {tool_name}."
+        message = f"{head}{dym} See 'field'; valid names are in allowed_values."
+        allowed_values = valid_params
+    return sanitize_envelope(
+        {
             "success": False,
             "error_code": "invalid_input",
             "message": sanitize_message(message),
             "retryable": False,
             "recovery_action": "reformulate_input",
             "field": safe_loc,
-            "allowed_values": allowed,
+            "allowed_values": allowed_values,
             "hint": signature,
             "_meta": {
                 "tool": tool_name,
@@ -218,30 +222,7 @@ def build_arg_error_envelope(
                 "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
             },
         }
-    if error_type == "missing_argument":
-        head = f"Missing required argument `{safe_loc}` for {tool_name}."
-    elif error_type == "unexpected_keyword_argument":
-        head = f"Unknown argument `{safe_loc}` for {tool_name}."
-    else:
-        head = f"Invalid value for argument `{safe_loc}` of {tool_name}."
-    dym = f" Did you mean `{suggestion}`?" if suggestion else ""
-    message = f"{head}{dym} Valid argument names are listed in allowed_values."
-    return {
-        "success": False,
-        "error_code": "invalid_input",
-        "message": sanitize_message(message),
-        "retryable": False,
-        "recovery_action": "reformulate_input",
-        "field": safe_loc,
-        "allowed_values": valid_params,
-        "hint": signature,
-        "_meta": {
-            "tool": tool_name,
-            "request_id": _request_id(),
-            "next_commands": [cmd("get_server_capabilities")],
-            "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
-        },
-    }
+    )
 
 
 async def run_mcp_tool(

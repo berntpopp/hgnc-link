@@ -32,13 +32,46 @@ from hgnc_link.mcp.envelope import build_arg_error_envelope
 
 logger = logging.getLogger(__name__)
 
+# FastMCP logs the FULL pydantic validation error -- including the caller-supplied
+# argument name/value and any control/bidi/zero-width code points -- at WARNING on
+# this logger, BEFORE this middleware reshapes it into a fixed envelope.
+_FASTMCP_SERVER_LOGGER = "fastmcp.server.server"
+_ARG_ERROR_LOG_PREFIX = "Invalid arguments for tool"
+
+
+class _ArgErrorLogScrubber(logging.Filter):
+    """Scrub FastMCP's raw arg-validation log record (M3 no-raw-input-in-logs).
+
+    Replaces the record's message/args with fixed metadata (keeping only the
+    server-registered tool name) so the raw, caller-controlled pydantic error --
+    which can carry injection prose and forbidden code points -- never reaches a
+    log sink. Returns True so the (now scrubbed) record is still emitted.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str) and record.msg.startswith(_ARG_ERROR_LOG_PREFIX):
+            tool = record.args[0] if isinstance(record.args, tuple) and record.args else "?"
+            record.msg = "Invalid arguments for tool %r (validation details suppressed)"
+            record.args = (tool,)
+            record.exc_info = None
+            record.exc_text = None
+        return True
+
+
+def _install_arg_error_log_scrubber() -> None:
+    """Attach the scrubber to FastMCP's server logger once (idempotent)."""
+    target = logging.getLogger(_FASTMCP_SERVER_LOGGER)
+    if not any(isinstance(f, _ArgErrorLogScrubber) for f in target.filters):
+        target.addFilter(_ArgErrorLogScrubber())
+
 
 class ArgValidationMiddleware(Middleware):
     """Reshape argument-binding errors into the envelope and apply argument aliases."""
 
     def __init__(self) -> None:
-        """Initialise the per-tool parameter-schema cache."""
+        """Initialise the per-tool schema cache and scrub FastMCP's raw arg log."""
         self._schema_cache: dict[str, dict[str, Any]] = {}
+        _install_arg_error_log_scrubber()
 
     async def _schema(self, context: MiddlewareContext[Any], name: str) -> dict[str, Any]:
         if name not in self._schema_cache:
