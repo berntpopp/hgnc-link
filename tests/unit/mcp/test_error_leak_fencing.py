@@ -138,8 +138,10 @@ async def test_ambiguous_error_chains_only_valid_ids_and_is_clean(facade_factory
     exc = AmbiguousQueryError(
         HOSTILE,
         candidates=[
-            {"hgnc_id": "HGNC:1", "symbol": "AMBA", "name": "gene one‍"},
-            {"hgnc_id": "not-an-id‮", "symbol": "AMBB"},
+            # a valid candidate carrying a hostile free-text name + code points
+            {"hgnc_id": "HGNC:1", "symbol": "AMBA", "name": f"{_PROSE_B}‍ gene"},
+            # a fully hostile candidate: prose id/symbol -> must be DROPPED entirely
+            {"hgnc_id": f"{_PROSE_A}", "symbol": f"{_PROSE_B}‮"},
         ],
     )
     mcp = facade_factory(_RaisingService(exc))
@@ -147,10 +149,55 @@ async def test_ambiguous_error_chains_only_valid_ids_and_is_clean(facade_factory
     for payload in _mirrors(result):
         assert payload["error_code"] == "ambiguous_query"
         assert payload["message"] == "The request matched several HGNC records; see candidates."
+        # only the valid candidate survives; its free-text name is dropped
+        cands = payload["candidates"]
+        assert [c["hgnc_id"] for c in cands] == ["HGNC:1"]
+        assert all("name" not in c for c in cands)
         chained = [c.get("arguments", {}).get("query") for c in payload["_meta"]["next_commands"]]
-        assert "HGNC:1" in chained
-        assert all(q is None or "not-an-id" not in str(q) for q in chained)
+        assert chained == ["HGNC:1"]
+        _assert_no_prose_anywhere(payload)  # prose DROPPED, not merely code-point-stripped
         _assert_no_codepoints_anywhere(payload)
+
+
+async def test_withdrawn_error_status_enum_and_validated_replaced_by(facade_factory: Any) -> None:
+    """Withdrawn error: status is a closed enum, replaced_by keeps only valid ids, all clean."""
+    from hgnc_link.exceptions import WithdrawnEntryError
+
+    exc = WithdrawnEntryError(
+        "A1S9T",
+        status=f"{_PROSE_A}",  # hostile status -> replaced by the fixed enum word
+        replaced_by=[
+            {"hgnc_id": "HGNC:12469", "symbol": "UBA1"},
+            {"hgnc_id": f"{_PROSE_B}", "symbol": f"{_PROSE_A}"},  # hostile -> dropped
+        ],
+    )
+    mcp = facade_factory(_RaisingService(exc))
+    result = await mcp.call_tool("resolve_symbol", {"query": "A1S9T"})
+    for payload in _mirrors(result):
+        assert payload["error_code"] == "not_found"
+        assert payload["withdrawn_status"] == "withdrawn"  # not the hostile prose
+        assert [r["hgnc_id"] for r in payload["replaced_by"]] == ["HGNC:12469"]
+        assert [c["arguments"]["query"] for c in payload["_meta"]["next_commands"]] == [
+            "HGNC:12469"
+        ]
+        _assert_no_prose_anywhere(payload)
+        _assert_no_codepoints_anywhere(payload)
+
+
+async def test_batch_withdrawn_and_ambiguous_rows_validate_data(facade_factory: Any) -> None:
+    """Batch withdrawn/ambiguous rows carry validated ids + enum only -- no copied prose."""
+    from hgnc_link.exceptions import WithdrawnEntryError
+
+    withdrawn = WithdrawnEntryError(
+        "X", status=f"{_PROSE_A}", replaced_by=[{"hgnc_id": f"{_PROSE_B}", "symbol": "S"}]
+    )
+    ambiguous = AmbiguousQueryError(HOSTILE, candidates=[{"hgnc_id": f"{_PROSE_A}", "symbol": "S"}])
+    for exc in (withdrawn, ambiguous):
+        mcp = facade_factory(_RaisingService(exc))
+        result = await mcp.call_tool("resolve_symbols_batch", {"queries": ["Q"]})
+        for payload in _mirrors(result):
+            _assert_no_prose_anywhere(payload)
+            _assert_no_codepoints_anywhere(payload)
 
 
 async def test_default_next_commands_drops_free_form_hostile_query(facade_factory: Any) -> None:

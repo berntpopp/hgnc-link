@@ -2,8 +2,7 @@
 
 Returns plain dicts (no envelope); the MCP layer owns ``success``/``_meta``.
 The resolution cascade (HGNC ID -> current symbol -> previous symbol -> alias ->
-withdrawn redirect) is the centrepiece — it returns the match provenance and
-surfaces ambiguity instead of silently collapsing it.
+withdrawn redirect) returns match provenance and surfaces ambiguity.
 """
 
 from __future__ import annotations
@@ -26,6 +25,12 @@ from hgnc_link.exceptions import (
     WithdrawnEntryError,
 )
 from hgnc_link.identifiers import infer_xref_source, normalize_hgnc_id
+from hgnc_link.safe_fields import (
+    safe_candidates,
+    safe_replaced_by,
+    safe_withdrawn_status,
+    strip_forbidden,
+)
 from hgnc_link.services.shaping import shape_gene, shape_resolution, shape_summary
 
 if TYPE_CHECKING:
@@ -36,8 +41,7 @@ _MAX_BATCH = 200
 _MAX_CANDIDATES = 25
 _XREF_LABELS = dict(XREF_FIELDS)
 
-# Fixed classifications for resolve_batch item rows: these rows bypass the error
-# envelope, so must never carry str(exc) (it embeds the caller-supplied query).
+# Fixed classifications for resolve_batch item rows (never str(exc), a bypass surface).
 _BATCH_AMBIGUOUS_NOTE = "Ambiguous query; several genes share this symbol -- pick one candidate."
 _BATCH_INVALID_REASON = "Query was rejected as invalid input."
 _BATCH_NOT_FOUND_REASON = "No HGNC record matches this query."
@@ -47,12 +51,10 @@ class HgncService:
     """High-level HGNC operations backed by the local SQLite index."""
 
     # Finding M6/D9: the live REST fallback is NOT wired into any operation yet --
-    # resolve/get_gene/search all go through ``self.repo`` and never touch
-    # ``self._rest``. Until the fallback path is implemented, diagnostics must not
-    # claim it is enabled just because a client object exists.
-    # Follow-up: before flipping this to True, wire the fallback through a
-    # ``field``-path allowlist guarding HgncRestClient.fetch/search
-    # (see api/client.py:87,92) so untrusted field names cannot reach the REST API.
+    # resolve/get_gene/search all go through ``self.repo``, never ``self._rest``, so
+    # diagnostics must not claim it is enabled just because a client object exists.
+    # Before flipping this to True, guard HgncRestClient.fetch/search with a
+    # ``field``-path allowlist so untrusted field names cannot reach the REST API.
     _LIVE_FALLBACK_WIRED: bool = False
 
     def __init__(
@@ -158,8 +160,7 @@ class HgncService:
         gene = self.repo.get_gene(best[0][0])
         if gene is None:  # pragma: no cover - index integrity
             raise NotFoundError(f"No HGNC record for {best[0][0]}.")
-        # Lower-tier matches point at *other* genes the caller might have meant
-        # (e.g. a previous-symbol hit that is also an alias of a different gene).
+        # Lower-tier matches point at *other* genes the caller might have meant.
         seen = {gene.get("hgnc_id")}
         others: list[dict[str, Any]] = []
         for hid, stype in pairs:
@@ -231,35 +232,36 @@ class HgncService:
                     resolved += 1
                 results.append(res)
             except WithdrawnEntryError as exc:
+                # query -> code-point-stripped correlation key; status -> closed enum;
+                # replaced_by -> validated ids only (never copy exception prose).
                 results.append(
                     {
-                        "query": query,
+                        "query": strip_forbidden(query),
                         "hgnc_id": None,
                         "match_type": "withdrawn",
                         "obsolete": True,
-                        "withdrawn_status": exc.withdrawn_status,
-                        "replaced_by": exc.replaced_by,
+                        "withdrawn_status": safe_withdrawn_status(exc.withdrawn_status),
+                        "replaced_by": safe_replaced_by(exc.replaced_by),
                     }
                 )
             except AmbiguousQueryError as exc:
+                safe_cands = safe_candidates(exc.candidates)  # validated ids; name dropped
                 results.append(
                     {
-                        "query": query,
+                        "query": strip_forbidden(query),
                         "hgnc_id": None,
                         "ambiguous": True,
-                        "candidate_count": len(exc.candidates),
-                        "candidates": [shape_summary(c, mode) for c in exc.candidates],
-                        # Fixed classification, never str(exc) (bypass surface).
-                        "note": _BATCH_AMBIGUOUS_NOTE,
+                        "candidate_count": len(safe_cands),
+                        "candidates": safe_cands,
+                        "note": _BATCH_AMBIGUOUS_NOTE,  # fixed classification, never str(exc)
                     }
                 )
             except (NotFoundError, InvalidInputError) as exc:
                 entry: dict[str, Any] = {
-                    "query": query,
+                    "query": strip_forbidden(query),
                     "hgnc_id": None,
                     "unresolved": True,
-                    # Fixed typed classification, never str(exc) (bypass surface).
-                    "reason": (
+                    "reason": (  # fixed typed classification, never str(exc)
                         _BATCH_INVALID_REASON
                         if isinstance(exc, InvalidInputError)
                         else _BATCH_NOT_FOUND_REASON
@@ -341,9 +343,8 @@ class HgncService:
     ) -> dict[str, Any]:
         """Return external cross-references for a gene (forward identifier mapping).
 
-        ``response_mode`` selects the default field set (minimal=anchor ids,
-        compact=high-value, standard/full=all populated). An explicit
-        ``databases=`` filter overrides the tier and returns exactly those fields.
+        ``response_mode`` selects the default field set; an explicit ``databases=``
+        filter overrides the tier and returns exactly those fields.
         """
         gene, match_type = self._resolve_to_gene((query or "").strip())
         wanted = _resolve_xref_filter(databases)
@@ -399,7 +400,7 @@ class HgncService:
         """Return the member genes of a gene group/family (by id or name).
 
         Members are globally symbol-ordered, so ``offset``/``limit`` paginate
-        deterministically. ``truncated`` and ``next_offset`` signal more pages.
+        deterministically; ``truncated``/``next_offset`` signal more pages.
         """
         raw = (group or "").strip()
         if not raw:
@@ -449,9 +450,8 @@ class HgncService:
 def _resolve_xref_filter(databases: list[str] | None) -> set[str] | None:
     """Normalize the ``databases`` filter to canonical field keys.
 
-    Friendly labels/synonyms (``mane``, ``ncbi``, ``mim`` ...) map to the field
-    key. An unrecognized key raises ``invalid_input`` with a did-you-mean rather
-    than silently returning an empty result. ``None`` means "no filter".
+    Friendly labels/synonyms map to the field key; an unrecognized key raises
+    ``invalid_input`` with a did-you-mean. ``None`` means "no filter".
     """
     if not databases:
         return None

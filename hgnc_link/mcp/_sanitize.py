@@ -27,36 +27,26 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Byte-identical to the fleet Response-Envelope v1.1 forbidden code-point set (the
-# same set the module-fenced backends' ``untrusted_content.py`` removes): C0/C1
-# controls except tab/newline/CR, zero-width joiners/space/BOM, and the bidi
-# embedding/override/isolate controls.
-FORBIDDEN_CODEPOINTS = frozenset(
-    {
-        *range(0x0000, 0x0009),
-        *range(0x000B, 0x000D),
-        *range(0x000E, 0x0020),
-        *range(0x007F, 0x00A0),
-        0x200B,
-        0x200C,
-        0x200D,
-        0x2060,
-        0xFEFF,
-        *range(0x202A, 0x202F),
-        *range(0x2066, 0x206A),
-    }
-)
+# The forbidden code-point set + code-point stripper live at the package root
+# (``hgnc_link.safe_fields``) so the service layer can reuse them without importing
+# ``mcp``; re-exported here for the MCP callers that already import from this module.
+from hgnc_link.safe_fields import FORBIDDEN_CODEPOINTS, strip_forbidden
+
+__all__ = [
+    "FORBIDDEN_CODEPOINTS",
+    "MAX_MESSAGE_CHARS",
+    "safe_field_name",
+    "sanitize_envelope",
+    "sanitize_message",
+    "sanitize_tree",
+    "strip_forbidden",
+]
 
 MAX_MESSAGE_CHARS = 280
 # An argument name is a low-cardinality identifier; anything that is not one is
 # redacted rather than echoed (it could otherwise carry prose in ``field``).
 _VALID_FIELD_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]{0,63}$")
 _REDACTED_FIELD = "<redacted>"
-
-
-def strip_forbidden(text: str) -> str:
-    """Remove every forbidden control/zero-width/bidi/NUL code point (no length cap)."""
-    return "".join(char for char in text if ord(char) not in FORBIDDEN_CODEPOINTS)
 
 
 def sanitize_message(text: str) -> str:

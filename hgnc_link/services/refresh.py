@@ -13,7 +13,6 @@ import contextlib
 import random
 from typing import TYPE_CHECKING, Any
 
-from hgnc_link.exceptions import DownloadError, HgncError
 from hgnc_link.ingest.builder import ensure_database, rebuild
 from hgnc_link.mcp.service_adapters import reset_hgnc_service
 
@@ -27,8 +26,12 @@ async def bootstrap_data(config: HgncDataConfig, logger: Any) -> None:
         path = await asyncio.to_thread(ensure_database, config)
         reset_hgnc_service()
         logger.info("hgnc_data_ready", db_path=str(path))
-    except (HgncError, DownloadError, OSError) as exc:
-        logger.warning("hgnc_data_bootstrap_failed", error=str(exc))
+    except Exception as exc:
+        # Non-fatal bootstrap. Log ONLY the exception class -- never str(exc): a
+        # hostile artifact can make a decode/gzip error embed the raw (attacker-
+        # influenceable) body, so the broad catch also covers UnicodeDecodeError /
+        # BadGzipFile that previously escaped uncaught.
+        logger.warning("hgnc_data_bootstrap_failed", error_type=type(exc).__name__)
 
 
 async def _refresh_loop(config: HgncDataConfig, logger: Any) -> None:
@@ -43,8 +46,9 @@ async def _refresh_loop(config: HgncDataConfig, logger: Any) -> None:
                 logger.info("hgnc_data_refreshed", release=result.meta.release)
             else:
                 logger.debug("hgnc_data_unchanged")
-        except (HgncError, DownloadError, OSError) as exc:
-            logger.warning("hgnc_data_refresh_failed", error=str(exc))
+        except Exception as exc:
+            # The loop must survive any fault; log only the class, never str(exc).
+            logger.warning("hgnc_data_refresh_failed", error_type=type(exc).__name__)
 
 
 def start_refresh_scheduler(config: HgncDataConfig, logger: Any) -> asyncio.Task[None] | None:

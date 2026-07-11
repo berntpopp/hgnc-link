@@ -78,7 +78,9 @@ async def test_invalid_input_carries_field_allowed_hint() -> None:
     )
     assert out["field"] == "source"
     assert out["allowed_values"] == ["a", "b"]
-    assert out["hint"] == "use a"
+    # hint is a FIXED server string (the exception's own hint is never surfaced --
+    # it could carry copied prose); field + allowed_values carry the detail.
+    assert out["hint"] and "use a" not in out["hint"]
 
 
 async def test_withdrawn_envelope_flags_obsolete_and_redirects() -> None:

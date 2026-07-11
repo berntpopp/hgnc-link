@@ -26,9 +26,14 @@ from hgnc_link.exceptions import (
     ServiceUnavailableError,
     WithdrawnEntryError,
 )
-from hgnc_link.identifiers import looks_like_hgnc_id
 from hgnc_link.mcp._sanitize import safe_field_name, sanitize_envelope, sanitize_message
 from hgnc_link.mcp.next_commands import cmd, default_error_next_commands, withdrawn_recovery
+from hgnc_link.safe_fields import (
+    safe_allowed_values,
+    safe_candidates,
+    safe_replaced_by,
+    safe_withdrawn_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +86,11 @@ _PUBLIC_MESSAGE: dict[str, str] = {
     "internal_error": "An internal error occurred. The request was not completed.",
 }
 
+# Fixed, server-authored recovery hint for invalid_input. The exception's own
+# ``hint`` is NOT surfaced (it could carry copied prose); ``field`` +
+# ``allowed_values`` already carry the validated, actionable detail.
+_INVALID_INPUT_HINT = "Correct the offending argument (see field and allowed_values), then retry."
+
 
 def _classify(exc: BaseException) -> tuple[str, str]:
     """Return ``(error_code, fixed_public_message)`` for an exception.
@@ -132,30 +142,28 @@ def _error_envelope(exc: BaseException, context: McpErrorContext) -> dict[str, A
             "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
         },
     }
-    # Structured, server-authored detail fields (field names / allowed vocab /
-    # static hints); the candidate/withdrawn payloads come from the curated local
-    # index. Every next_command identifier is grammar-validated before it is
-    # echoed, and sanitize_tree() is the final whole-envelope code-point backstop.
+    # DEFINITIVE RULE: never copy an exception attribute verbatim into a caller-
+    # visible field. Each is rebuilt from a validated identifier, a closed enum, or
+    # a fixed server string; non-conforming values are dropped. sanitize_envelope()
+    # is only the final code-point backstop ON TOP of this.
     if isinstance(exc, InvalidInputError):
         if exc.field is not None:
-            envelope["field"] = exc.field
+            envelope["field"] = safe_field_name(exc.field)  # identifier or <redacted>
         if exc.allowed is not None:
-            envelope["allowed_values"] = exc.allowed
+            envelope["allowed_values"] = safe_allowed_values(exc.allowed)  # drop prose
         if exc.hint is not None:
-            envelope["hint"] = exc.hint
+            envelope["hint"] = _INVALID_INPUT_HINT  # fixed server string, not exc.hint
     if isinstance(exc, AmbiguousQueryError) and exc.candidates:
-        envelope["candidates"] = exc.candidates
-        chain = [
-            cmd("get_gene", query=c["hgnc_id"])
-            for c in exc.candidates[:3]
-            if isinstance(c.get("hgnc_id"), str) and looks_like_hgnc_id(c["hgnc_id"])
-        ]
+        safe_cands = safe_candidates(exc.candidates)  # validated ids only; name dropped
+        envelope["candidates"] = safe_cands
+        chain = [cmd("get_gene", query=c["hgnc_id"]) for c in safe_cands[:3]]
         envelope["_meta"]["next_commands"] = chain or [cmd("get_server_capabilities")]
     elif isinstance(exc, WithdrawnEntryError):
+        replaced = safe_replaced_by(exc.replaced_by)  # validated successor ids only
         envelope["obsolete"] = True
-        envelope["withdrawn_status"] = exc.withdrawn_status
-        envelope["replaced_by"] = exc.replaced_by
-        envelope["_meta"]["next_commands"] = withdrawn_recovery(exc.replaced_by)
+        envelope["withdrawn_status"] = safe_withdrawn_status(exc.withdrawn_status)  # enum
+        envelope["replaced_by"] = replaced
+        envelope["_meta"]["next_commands"] = withdrawn_recovery(replaced)
     elif context.fallback is not None:
         envelope["_meta"]["next_commands"] = [context.fallback]
     else:
@@ -213,7 +221,7 @@ def build_arg_error_envelope(
             "retryable": False,
             "recovery_action": "reformulate_input",
             "field": safe_loc,
-            "allowed_values": allowed_values,
+            "allowed_values": safe_allowed_values(allowed_values),
             "hint": signature,
             "_meta": {
                 "tool": tool_name,
@@ -244,6 +252,10 @@ async def run_mcp_tool(
                 "request_id": _request_id(),
                 "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
             }
+            # Code-point backstop over the WHOLE success payload too (curated data
+            # is clean, so this is a no-op there; it strips any forbidden code point
+            # from a caller-echoed correlation key such as a batch row's `query`).
+            result = sanitize_envelope(result)
         return result
     except Exception as exc:  # broad catch is the error-boundary contract
         envelope = _error_envelope(exc, ctx)
