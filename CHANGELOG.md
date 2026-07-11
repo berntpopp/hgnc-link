@@ -6,6 +6,17 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-11
+
+### Security
+
+- Defense in depth: caller-visible error messages and structured fields
+  (`candidates`/`withdrawn_status`/`replaced_by`/`field`/`allowed_values`/`hint`)
+  are built from fixed/validated values (no exception or upstream prose) and
+  sanitized of control/zero-width/bidi/NUL code points; batch rows and
+  `next_commands` validate identifiers; the local DB path and decode failures are
+  no longer echoed or logged raw. Research use only.
+
 ## [2.0.0] - 2026-07-10
 
 ### Security

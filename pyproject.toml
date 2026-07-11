@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hgnc-link"
-version = "2.0.0"
+version = "2.0.1"
 description = "MCP/API server that grounds gene-nomenclature work in the HGNC dataset"
 readme = "README.md"
 license = { text = "MIT" }
