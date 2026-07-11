@@ -6,6 +6,21 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-07-11
+
+### Security
+
+- Guard the FastMCP-core not-found reflection surface. FastMCP core reflected the
+  caller's own requested tool name / resource URI / prompt name (with any
+  control/zero-width/bidi/NUL code points) back to the caller and to logs BEFORE
+  backend middleware ran. A new `notfound_guard` adds a registry preflight for
+  unknown tools (fixed name-free `not_found` envelope, no `_meta.tool` echo), a
+  fixed URI-free `on_read_resource` boundary, an outermost protocol-handler
+  backstop (unknown-tool return path + unknown-prompt / malformed-URI dispatch),
+  and a marker-based log-scrub filter on the FastMCP/MCP-SDK source loggers and
+  their Rich handlers. Fixed constants only; no success/error envelope schema
+  changed. Research use only.
+
 ## [2.0.1] - 2026-07-11
 
 ### Security
