@@ -19,7 +19,10 @@
     "image_allowlist": [
       "home/app/web/hgnc_link/data/__init__.py",
       "home/app/web/hgnc_link/data/repository.py",
-      "home/app/web/hgnc_link/data/schema.sql"
+      "home/app/web/hgnc_link/data/schema.sql",
+      "opt/venv/lib/python3.12/site-packages/hgnc_link/data/__init__.py",
+      "opt/venv/lib/python3.12/site-packages/hgnc_link/data/repository.py",
+      "opt/venv/lib/python3.12/site-packages/hgnc_link/data/schema.sql"
     ],
     "egress_allowlist": [
       "storage.googleapis.com",
