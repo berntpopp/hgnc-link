@@ -1,28 +1,70 @@
 # Production overlay for hgnc-link (Container & Deployment Hardening Standard v1).
 #
+#   HGNC_LINK_IMAGE=ghcr.io/berntpopp/hgnc-link@sha256:<digest> \
 #   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
-#
-# Expose-only behind the reverse proxy: the base file's published host-port
-# mapping is dropped with `ports: !reset []`. `!reset` (not a plain `[]`) is
-# REQUIRED because Compose MERGES list fields across `-f` overlays, so `ports: []`
-# would NOT drop the base "<host>:8000" mapping and the endpoint would stay
-# published on the public IP. The container is reachable only via the proxy.
+
 services:
   hgnc-link:
-    environment:
-      HGNC_LINK_LOG_LEVEL: INFO
-      HGNC_LINK_LOG_FORMAT: json
-      HGNC_LINK_ALLOWED_HOSTS: '["localhost","127.0.0.1","::1","hgnc-link.genefoundry.org"]'
+    build: !reset null
+    image: ${HGNC_LINK_IMAGE:?Set HGNC_LINK_IMAGE to ghcr.io/berntpopp/hgnc-link@sha256:<digest>}
+    pull_policy: missing
+    container_name: !reset null
+    env_file: !reset []
     ports: !reset []
     expose:
       - "8000"
-    # Rootfs, tmpfs, capability, process, and resource hardening are inherited
-    # unchanged from the base file. Repeating unique list entries here makes
-    # current Compose reject the merged configuration as duplicate.
+    environment:
+      GF_HEALTHCHECK_HOST: localhost
+      HGNC_LINK_HOST: 0.0.0.0
+      HGNC_LINK_PORT: 8000
+      HGNC_LINK_TRANSPORT: unified
+      HGNC_LINK_MCP_PATH: /mcp
+      HGNC_LINK_LOG_LEVEL: INFO
+      HGNC_LINK_LOG_FORMAT: json
+      HGNC_LINK_ALLOWED_HOSTS: '["localhost","127.0.0.1","::1","hgnc-link.genefoundry.org"]'
+      HGNC_LINK_DATA__DATA_DIR: /data
+      HGNC_LINK_DATA__AUTO_BOOTSTRAP: "true"
+      HGNC_LINK_DATA__REFRESH_ENABLED: "false"
+    volumes: !override
+      - hgnc-data:/data
+    read_only: true
+    tmpfs: !override
+      - /tmp:rw,noexec,nosuid,size=256m,mode=1777
+    security_opt: !override
+      - no-new-privileges:true
+    cap_drop: !override
+      - ALL
+    init: true
     restart: on-failure
+    mem_limit: !reset null
+    cpus: !reset null
+    pids_limit: !reset null
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1.0"
+          pids: 256
+    healthcheck: !override
+      test: ["CMD", "sh", "-c", "curl -f -H \"Host: $${GF_HEALTHCHECK_HOST}\" http://localhost:8000/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "5"
         labels: "service=hgnc-link,environment=production"
+    networks: !override
+      - default
+
+  refresh: !reset null
+
+volumes: !override
+  hgnc-data:
+    name: hgnc-link_hgnc-data
+
+networks: !override
+  default:
+    name: hgnc-link_default
