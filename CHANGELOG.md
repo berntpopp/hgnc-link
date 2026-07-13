@@ -6,6 +6,15 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-07-13
+
+### Build
+
+- Re-pin the central container CI and release callers to the fixed GeneFoundry
+  release standard (`58d011d`), which corrects seven latent defects in the
+  reusable workflows. No runtime or MCP surface changes. Research use only; not
+  for clinical decision support.
+
 ## [2.0.3] - 2026-07-13
 
 ### Security
