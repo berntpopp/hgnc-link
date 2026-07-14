@@ -5,6 +5,10 @@ config uses a **double underscore**, e.g. `HGNC_LINK_DATA__DB_FILENAME`. Copy
 [`.env.example`](../.env.example) to `.env` to start; everything below is optional
 and shown with the default that `hgnc_link/config.py` actually sets.
 
+The tables below are **exhaustive, and a test says so**: `tests/unit/test_docs_config.py`
+enumerates every field of `ServerSettings` (including the nested `DATA__` / `API__`
+models) and fails if this page omits one — or documents one that no longer exists.
+
 ## Server
 
 | Variable | Default | Purpose |
@@ -18,6 +22,7 @@ and shown with the default that `hgnc_link/config.py` actually sets.
 | `HGNC_LINK_CORS_ORIGINS` | `["http://localhost:3000","http://127.0.0.1:3000"]` | JSON list of origins that receive CORS response headers. |
 | `HGNC_LINK_LOG_LEVEL` | `INFO` | `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` \| `CRITICAL`. |
 | `HGNC_LINK_LOG_FORMAT` | `console` | `console` \| `json`. |
+| `HGNC_LINK_RELOAD` | `false` | Uvicorn auto-reload. Development only — never enable in a container. |
 
 ## Local data store
 
@@ -30,11 +35,16 @@ The bulk downloads are built into a SQLite index — see [Data](data.md).
 | `HGNC_LINK_DATA__COMPLETE_SET_URL` | HGNC GCS bucket | `hgnc_complete_set.json` dump URL. |
 | `HGNC_LINK_DATA__WITHDRAWN_URL` | HGNC GCS bucket | `withdrawn.txt` dump URL. |
 | `HGNC_LINK_DATA__DOWNLOAD_TIMEOUT` | `180` | HTTP timeout (s) for a bulk download. |
+| `HGNC_LINK_DATA__MAX_DOWNLOAD_BYTES` | `134217728` (128 MiB) | **Download-size cap.** The transfer aborts past it; the dumps measured under 64 MiB on 2026-07-10. Raise only for a larger approved HGNC export. |
+| `HGNC_LINK_DATA__MAX_DOWNLOAD_SECONDS` | `900.0` | **Download-time cap.** Total transfer budget (s); measured under 450 s on 2026-07-10. |
+| `HGNC_LINK_DATA__USER_AGENT` | `hgnc-link/<version> (+<repo URL>)` | `User-Agent` sent to genenames.org / the GCS bucket. |
 | `HGNC_LINK_DATA__AUTO_BOOTSTRAP` | `true` | Build the index on first use if it is absent. |
 | `HGNC_LINK_DATA__REFRESH_ENABLED` | `false` | In-process refresh scheduler (`unified`/`http` only). **Off by default — cron owns refresh** ([Deployment](deployment.md)). |
 | `HGNC_LINK_DATA__REFRESH_INTERVAL_HOURS` | `24.0` | Interval for the in-process loop when enabled (1–720). |
 | `HGNC_LINK_DATA__REFRESH_JITTER_SECONDS` | `300` | Random jitter per refresh, to avoid thundering herds. |
-| `HGNC_LINK_DATA__BUILD_LOCK_TIMEOUT` | see `config.py` | Cross-process build-lock timeout (s). |
+| `HGNC_LINK_DATA__BUILD_LOCK_TIMEOUT` | `600` | Cross-process build-lock timeout (s), 1–3600. |
+| `HGNC_LINK_DATA__CACHE_SIZE` | `1024` | Max entries in the in-process query cache (`0` disables it). |
+| `HGNC_LINK_DATA__CACHE_TTL` | `3600` | Query-cache TTL (s). |
 
 ## Live REST client (`rest.genenames.org`)
 
