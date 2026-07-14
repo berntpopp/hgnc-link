@@ -43,8 +43,6 @@ The bulk downloads are built into a SQLite index — see [Data](data.md).
 | `HGNC_LINK_DATA__REFRESH_INTERVAL_HOURS` | `24.0` | Interval for the in-process loop when enabled (1–720). |
 | `HGNC_LINK_DATA__REFRESH_JITTER_SECONDS` | `300` | Random jitter per refresh, to avoid thundering herds. |
 | `HGNC_LINK_DATA__BUILD_LOCK_TIMEOUT` | `600` | Cross-process build-lock timeout (s), 1–3600. |
-| `HGNC_LINK_DATA__CACHE_SIZE` | `1024` | Max entries in the in-process query cache (`0` disables it). |
-| `HGNC_LINK_DATA__CACHE_TTL` | `3600` | Query-cache TTL (s). |
 
 ## Live REST client (`rest.genenames.org`)
 
