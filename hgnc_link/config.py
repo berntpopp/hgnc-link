@@ -105,18 +105,6 @@ class HgncDataConfig(BaseModel):
         le=3600,
         description="Seconds to wait for the cross-process build lock before giving up.",
     )
-    cache_size: int = Field(
-        default=1024,
-        ge=0,
-        le=65536,
-        description="Max entries in the in-process query cache (0 disables).",
-    )
-    cache_ttl: int = Field(
-        default=3600,
-        ge=0,
-        le=86400,
-        description="Query cache TTL in seconds.",
-    )
 
     @property
     def db_path(self) -> Path:
