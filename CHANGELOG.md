@@ -4,6 +4,8 @@ All notable changes to hgnc-link are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
 ## [2.0.6] - 2026-07-14
 
 ### Changed
@@ -19,8 +21,6 @@ All notable changes to hgnc-link are documented here. The format follows
   the healthcheck and its long first-boot `start_period`, networks and the `hgnc-data`
   volume are all preserved, so the deployed topology and the ~73MB SQLite index it
   carries are untouched.
-
-## [Unreleased]
 
 ## [2.0.5] - 2026-07-13
 
