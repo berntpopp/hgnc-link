@@ -7,11 +7,31 @@ consistent with those.
 ## Golden rules
 
 1. **Run the gate before claiming done:** `make ci-local`
-   (format-check → lint → line-budget → mypy strict → tests). All must pass.
+   (format-check → lint → line-budget → README standard → mypy strict → tests).
+   All must pass.
 2. **Per-file line budget: 500 lines** (`make lint-loc`). Split modules that grow.
 3. **mypy is strict.** Fully type new code; no untyped defs.
 4. **stdout is sacred on stdio.** Logs go to stderr; never `print` to stdout in
    server/library code (the CLI is the only place `print` is allowed).
+
+## Make targets
+
+| Target | What it does |
+|--------|--------------|
+| `make install` | `uv sync --group dev`. |
+| `make data` | Download the HGNC dumps and build the local index (**required before first run**). |
+| `make data-refresh` / `make data-status` | Conditional refresh (the cron entry point) / print the loaded release. |
+| `make dev` / `make mcp-serve` | Unified REST + MCP server / stdio MCP server. |
+| `make check` | `format` + `lint`. |
+| `make typecheck` | `mypy --strict`. |
+| `make test` / `make test-fast` / `make test-cov` | Unit tests / parallel / with coverage. |
+| `make test-integration` | **Opt-in**: live HGNC download + REST asserts. Not in `ci-local`. |
+| `make lint-loc` / `make lint-readme` | 500-line budget / GeneFoundry README Standard v1. |
+| `make ci-local` | The definition-of-done gate (all of the above bar the live suite). |
+
+`docs/` is the home for anything a README must not carry: `configuration.md`
+(every `HGNC_LINK_*` var, the Host/Origin/CORS boundary), `data.md` (dumps, build,
+freshness), `deployment.md` (cron/systemd/Docker), `architecture.md`, `usage.md`.
 
 ## Architecture invariants (do not break)
 
@@ -57,3 +77,6 @@ consistent with those.
 3. Tool in `mcp/tools/<area>.py` (register fn), exported from `tools/__init__.py`,
    wired in `mcp/facade.py`.
 4. Add to `capabilities.TOOLS`; add unit + e2e tests.
+5. **Add a row to the README `## Tools` table.** `tests/unit/test_readme_tools.py`
+   asserts the table equals the registered tools exactly, so a new tool fails CI
+   until it is documented. Also add it to the `docs/usage.md` table.
