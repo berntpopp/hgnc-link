@@ -4,6 +4,22 @@ All notable changes to hgnc-link are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.0.6] - 2026-07-14
+
+### Changed
+
+- **The NPM deployment pulls the released image instead of building from source.**
+  `docker/docker-compose.npm.yml` carried `build:`, so a deploy rebuilt the image on the
+  server even though CI had already published an attested, digest-addressable image to
+  GHCR — the released image was never consumed. It now requires `HGNC_LINK_IMAGE` pinned
+  to a digest and fails closed when it is unset. The build-only `HGNC_LINK_GIT_SHA` /
+  `HGNC_LINK_BUILT_AT` args went with the `build:` block; the released image already
+  carries that provenance, stamped by CI. Nothing else in the overlay changed:
+  `container_name` (NPM routes to it), the Compose project name (it names the volumes),
+  the healthcheck and its long first-boot `start_period`, networks and the `hgnc-data`
+  volume are all preserved, so the deployed topology and the ~73MB SQLite index it
+  carries are untouched.
+
 ## [Unreleased]
 
 ## [2.0.5] - 2026-07-13
