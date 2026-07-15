@@ -13,7 +13,7 @@ import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, get_args
 
 from fastmcp.tools.tool import ToolResult
 from mcp.types import TextContent
@@ -60,13 +60,31 @@ class McpErrorContext:
     arguments: dict[str, Any] = field(default_factory=dict)
 
 
+# The closed error_code enum (Response-Envelope Standard v1). Anything else is a
+# violation, so codes entering the envelope are clamped to this set.
+ErrorCode = Literal[
+    "invalid_input",
+    "not_found",
+    "ambiguous_query",
+    "upstream_unavailable",
+    "rate_limited",
+    "internal",
+]
+_ERROR_CODES: frozenset[str] = frozenset(get_args(ErrorCode))
+
+
+def _clamp_error_code(code: str) -> str:
+    """Clamp an arbitrary code to the closed enum; anything unknown is ``internal``."""
+    return code if code in _ERROR_CODES else "internal"
+
+
 class McpToolError(Exception):
     """Raised inside a tool body to emit a specific error code/message."""
 
-    def __init__(self, *, error_code: str, message: str) -> None:
-        """Store an error code and client-safe message."""
+    def __init__(self, *, error_code: ErrorCode, message: str) -> None:
+        """Store an error code (clamped to the closed enum) and client-safe message."""
         super().__init__(message)
-        self.error_code = error_code
+        self.error_code: str = _clamp_error_code(error_code)
         self.message = message
 
 
@@ -106,7 +124,7 @@ def _classify(exc: BaseException) -> tuple[str, str]:
     input or upstream value is ever echoed into a caller-visible string.
     """
     if isinstance(exc, McpToolError):
-        return exc.error_code, exc.message
+        return _clamp_error_code(exc.error_code), exc.message
     if isinstance(exc, NotFoundError):  # WithdrawnEntryError subclasses this
         code = "not_found"
     elif isinstance(exc, AmbiguousQueryError):
@@ -273,6 +291,11 @@ async def run_mcp_tool(
             # is clean, so this is a no-op there; it strips any forbidden code point
             # from a caller-echoed correlation key such as a batch row's `query`).
             result = sanitize_envelope(result)
+            # A tool body may RETURN an error envelope (success:false) rather than
+            # raise; it must still set the protocol isError flag, so route it through
+            # the same ToolResult chokepoint as the raise path.
+            if result.get("success") is False:
+                return _error_tool_result(result)
         return result
     except Exception as exc:  # broad catch is the error-boundary contract
         envelope = _error_envelope(exc, ctx)
@@ -282,8 +305,13 @@ async def run_mcp_tool(
             envelope["error_code"],
             exc.__class__.__name__,
         )
-        return ToolResult(
-            structured_content=envelope,
-            content=[TextContent(type="text", text=json.dumps(envelope))],
-            is_error=True,
-        )
+        return _error_tool_result(envelope)
+
+
+def _error_tool_result(envelope: dict[str, Any]) -> ToolResult:
+    """Wrap a structured error envelope so the protocol ``isError`` flag is set."""
+    return ToolResult(
+        structured_content=envelope,
+        content=[TextContent(type="text", text=json.dumps(envelope))],
+        is_error=True,
+    )

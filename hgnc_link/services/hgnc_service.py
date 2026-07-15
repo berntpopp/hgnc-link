@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from hgnc_link.constants import XREF_FIELDS, XREF_SOURCE_ALIASES
+from hgnc_link.constants import VERSIONED_XREF_FIELDS, XREF_FIELDS, XREF_SOURCE_ALIASES
 from hgnc_link.exceptions import (
     AmbiguousQueryError,
     DataUnavailableError,
@@ -28,6 +28,7 @@ from hgnc_link.services.shaping import shape_gene, shape_resolution, shape_summa
 from hgnc_link.services.xref_filter import (
     reject_malformed_hgnc_id,
     resolve_xref_filter,
+    validate_xref_value,
     xref_tier_fields,
 )
 
@@ -367,42 +368,71 @@ class HgncService:
         }
 
     def lookup_by_xref(self, source: str, value: str, mode: str = "compact") -> dict[str, Any]:
-        """Reverse lookup: external identifier -> HGNC gene(s)."""
-        src = (source or "").strip().lower()
-        field = XREF_SOURCE_ALIASES.get(src)
-        if field is None:
-            allowed = sorted(set(XREF_SOURCE_ALIASES.values()))
-            raise InvalidInputError(
-                f"Unknown cross-reference source '{source}'.",
-                field="source",
-                allowed=allowed,
-                hint="e.g. entrez_id, ensembl_gene_id, uniprot, omim, refseq.",
-            )
+        """Reverse lookup: external identifier -> HGNC gene(s).
+
+        EXACT match first; only ``VERSIONED_XREF_FIELDS`` fall back to
+        version-insensitive matching (a numeric id like ``entrez_id=673.99`` is never
+        version-collapsed). A version match hitting >1 DISTINCT gene is ambiguous_query.
+        """
+        field = self._resolve_xref_source(source)
         val = (value or "").strip()
         if not val:
             raise InvalidInputError("value must be non-empty.", field="value")
-        hgnc_ids = self.repo.lookup_by_xref(field, val)
-        # Round-trip robustness (issue #26): the MANE Select transcript the server
-        # itself emits (an ENST/NM_ accession) may not be the gene's primary
-        # refseq_accession/ensembl id, so a caller who labels it 'refseq'/'ensembl'
-        # gets no hit on the primary field. Fall back to the mane_select index for a
-        # transcript-shaped value; report the field that actually matched.
-        if not hgnc_ids and field != "mane_select" and looks_like_transcript(val):
-            mane_ids = self.repo.lookup_by_xref("mane_select", val)
-            if mane_ids:
-                field = "mane_select"
-                hgnc_ids = mane_ids
+        validate_xref_value(field, val)
+
+        hgnc_ids = self.repo.lookup_by_xref(field, val)  # exact
+        matched_field = field
+        if not hgnc_ids and field in VERSIONED_XREF_FIELDS:
+            hgnc_ids = self.repo.lookup_by_xref_versioned(field, val)
+            if len(hgnc_ids) > 1:
+                raise self._xref_ambiguity(val, hgnc_ids)
+        if not hgnc_ids:
+            matched_field, hgnc_ids = self._mane_fallback(field, val)
         if not hgnc_ids:
             raise NotFoundError(f"No HGNC gene with {field}={val}.")
+
         genes = [self.repo.get_gene(hid) for hid in hgnc_ids]
         summaries = [shape_summary(_brief(g, "current"), mode) for g in genes if g is not None]
         return {
-            "source": field,
-            "source_label": _XREF_LABELS.get(field, field),
+            "source": matched_field,
+            "source_label": _XREF_LABELS.get(matched_field, matched_field),
             "value": val,
             "count": len(summaries),
             "results": summaries,
         }
+
+    def _resolve_xref_source(self, source: str) -> str:
+        field = XREF_SOURCE_ALIASES.get((source or "").strip().lower())
+        if field is None:
+            raise InvalidInputError(
+                f"Unknown cross-reference source '{source}'.",
+                field="source",
+                allowed=sorted(set(XREF_SOURCE_ALIASES.values())),
+                hint="e.g. entrez_id, ensembl_gene_id, uniprot, omim, refseq, mane_select.",
+            )
+        return field
+
+    def _mane_fallback(self, field: str, val: str) -> tuple[str, list[str]]:
+        """Resolve a MANE transcript back to its gene, ONLY for a refseq/ensembl source.
+
+        Never fires for another named source (e.g. ``omim_id``): the caller's source is
+        not silently overridden. Returns ``(matched_field, ids)``.
+        """
+        if field not in ("refseq_accession", "ensembl_gene_id") or not looks_like_transcript(val):
+            return field, []
+        ids = self.repo.lookup_by_xref_versioned("mane_select", val)
+        if len(ids) > 1:
+            raise self._xref_ambiguity(val, ids)
+        return ("mane_select" if ids else field), ids
+
+    def _xref_ambiguity(self, val: str, hgnc_ids: list[str]) -> AmbiguousQueryError:
+        candidates = [
+            _brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, "current") for hid in hgnc_ids
+        ]
+        return AmbiguousQueryError(
+            f"'{val}' matched {len(hgnc_ids)} genes after version normalization; pick one.",
+            candidates=candidates,
+        )
 
     def get_gene_group(
         self, group: str, *, limit: int = 200, offset: int = 0, mode: str = "compact"

@@ -9,6 +9,7 @@ from __future__ import annotations
 import difflib
 
 from hgnc_link.constants import (
+    NUMERIC_XREF_FIELDS,
     XREF_FIELDS,
     XREF_FILTER_ALIASES,
     XREF_TIER_COMPACT,
@@ -16,6 +17,21 @@ from hgnc_link.constants import (
 )
 from hgnc_link.exceptions import InvalidInputError
 from hgnc_link.identifiers import looks_like_malformed_hgnc_id
+
+
+def validate_xref_value(field: str, value: str) -> None:
+    """Reject a value whose shape cannot match its source (issue #26 review).
+
+    A numeric-id source (entrez_id/omim_id) requires a bare integer: ``673.99`` is a
+    malformed id (``invalid_input``), NOT a version-stripped match on ``673`` and NOT
+    a silent ``not_found``.
+    """
+    if field in NUMERIC_XREF_FIELDS and not value.isdigit():
+        raise InvalidInputError(
+            f"Malformed {field}: expected digits only.",
+            field="value",
+            hint=f"{field} is a numeric id, e.g. 673.",
+        )
 
 
 def reject_malformed_hgnc_id(raw: str) -> None:

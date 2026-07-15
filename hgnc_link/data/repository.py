@@ -189,25 +189,40 @@ class HgncRepository:
     # -- cross references ------------------------------------------------------
 
     def lookup_by_xref(self, source: str, value: str) -> list[str]:
-        """Return HGNC IDs whose ``source`` cross-reference matches ``value``.
-
-        Matching is **version-insensitive** in both directions, because the id a
-        caller holds and the id HGNC indexes may differ only by a trailing ``.<ver>``
-        sequence version: VEP/GENCODE/clinical reports emit ``ENSG…​.23`` while HGNC
-        stores the unversioned ``ensembl_gene_id``, whereas ``mane_select``/``ucsc``
-        are stored *with* their version. So a lookup matches when the stored value
-        equals the query, equals the version-stripped query, or is the query plus a
-        ``.<digits>`` version suffix.
-        """
-        val_upper = value.strip().upper()
-        stripped = strip_accession_version(val_upper)
-        versioned_like = _escape_like(stripped) + ".%"
+        """Return HGNC IDs whose ``source`` cross-reference EXACTLY equals ``value``."""
         rows = self._conn.execute(
-            "SELECT DISTINCT hgnc_id FROM xref WHERE source = ? AND ("
-            "value_upper = ? OR value_upper = ? OR value_upper LIKE ? ESCAPE '\\')",
-            (source, val_upper, stripped, versioned_like),
+            "SELECT DISTINCT hgnc_id FROM xref WHERE source = ? AND value_upper = ?",
+            (source, value.strip().upper()),
         ).fetchall()
         return [r["hgnc_id"] for r in rows]
+
+    def lookup_by_xref_versioned(self, source: str, value: str) -> list[str]:
+        """Version-insensitive reverse lookup, for id types that carry a ``.<version>``.
+
+        The id a caller holds and the id HGNC indexes may differ only by a trailing
+        sequence version (VEP/GENCODE emit ``ENSG…​.23`` while HGNC stores the
+        unversioned form; ``mane_select`` is stored *with* its version). So the query
+        and the stored value are compared with their version suffix normalised away.
+
+        The version component MUST be ``.<digits>`` and nothing else: an exact-then-
+        digits fullmatch in Python (not a bare ``LIKE base.%``) so ``NM_1`` never
+        matches ``NM_1.BAD`` and a base collision cannot smuggle in a longer accession.
+        Distinct genes sharing a base are all returned (the caller raises
+        ambiguous_query rather than silently merging them).
+        """
+        base = strip_accession_version(value.strip().upper())
+        like = _escape_like(base) + ".%"
+        rows = self._conn.execute(
+            "SELECT DISTINCT value_upper, hgnc_id FROM xref "
+            "WHERE source = ? AND (value_upper = ? OR value_upper LIKE ? ESCAPE '\\')",
+            (source, base, like),
+        ).fetchall()
+        exact = re.compile(re.escape(base) + r"(\.\d+)?$")
+        seen: list[str] = []
+        for row in rows:
+            if exact.fullmatch(row["value_upper"]) and row["hgnc_id"] not in seen:
+                seen.append(row["hgnc_id"])
+        return seen
 
     # -- gene groups -----------------------------------------------------------
 

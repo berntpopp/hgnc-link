@@ -136,3 +136,26 @@ async def test_mcp_tool_error_propagates_code() -> None:
     env = _err_env(out)
     assert env["error_code"] == "rate_limited"
     assert env["retryable"] is True
+
+
+async def test_mcp_tool_error_code_is_clamped_to_the_enum() -> None:
+    """An off-enum McpToolError code is clamped to `internal` (review #7)."""
+    exc = McpToolError(error_code="data_unavailable", message="x")  # type: ignore[arg-type]
+    assert exc.error_code == "internal"
+
+    async def call() -> dict[str, object]:
+        raise exc
+
+    out = await run_mcp_tool("t", call, context=McpErrorContext("t"))
+    assert _err_env(out)["error_code"] == "internal"
+
+
+async def test_returned_error_dict_sets_is_error() -> None:
+    """A tool body that RETURNS success:false must still flag isError (review #6)."""
+
+    async def call() -> dict[str, object]:
+        return {"success": False, "error_code": "not_found", "message": "no"}
+
+    out = await run_mcp_tool("t", call, context=McpErrorContext("t"))
+    assert out.is_error is True
+    assert out.structured_content["error_code"] == "not_found"

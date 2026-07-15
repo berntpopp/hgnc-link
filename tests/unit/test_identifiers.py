@@ -50,3 +50,13 @@ def test_infer_xref_source() -> None:
     assert infer_xref_source("NM_004333") == "refseq"
     assert infer_xref_source("BRAF") is None
     assert infer_xref_source("P53") is None  # too short to be a UniProt accession
+
+
+def test_source_enum_is_never_narrower_than_runtime() -> None:
+    """The advertised `source` enum equals the full runtime-accepted set (review #4)."""
+    from hgnc_link.constants import XREF_LOOKUP_SOURCE_ENUM, XREF_SOURCE_ALIASES
+
+    assert set(XREF_LOOKUP_SOURCE_ENUM) == set(XREF_SOURCE_ALIASES)
+    # the advertised examples and canonical/synonym labels are all in the enum
+    for advertised in ("refseq", "mane_select", "ensembl_gene_id", "ncbi", "ensembl"):
+        assert advertised in XREF_LOOKUP_SOURCE_ENUM

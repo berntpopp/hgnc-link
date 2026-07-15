@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import Field
 
+from hgnc_link.constants import XREF_FILTER_ENUM
 from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from hgnc_link.mcp.envelope import McpErrorContext, run_mcp_tool
 from hgnc_link.mcp.next_commands import after_get_gene, after_search, cmd
@@ -117,6 +118,10 @@ def register_gene_tools(mcp: FastMCP) -> None:
                     "did_you_mean."
                 ),
                 examples=[["ensembl", "uniprot", "omim"], ["mane"]],
+                # Declare the item vocabulary (S4) as EXACTLY the runtime-accepted set,
+                # so the enum is never narrower than the runtime; the `str` item type
+                # keeps the service's did-you-mean on the rejection path.
+                json_schema_extra={"items": {"type": "string", "enum": list(XREF_FILTER_ENUM)}},
             ),
         ] = None,
         response_mode: ResponseMode = "compact",

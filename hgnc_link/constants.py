@@ -115,23 +115,25 @@ XREF_SOURCE_ALIASES: dict[str, str] = {
     "mane": "mane_select",
 }
 
-#: Canonical reverse-lookup source keys advertised as the `source` schema enum. The
-#: runtime (XREF_SOURCE_ALIASES) is a SUPERSET of this (it also accepts synonyms such
-#: as 'ncbi'/'ensembl'/'mane'), so every schema-valid value is always runtime-valid.
-XREF_LOOKUP_SOURCE_ENUM: tuple[str, ...] = (
-    "entrez_id",
-    "ensembl_gene_id",
-    "uniprot_ids",
-    "refseq_accession",
-    "mane_select",
-    "omim_id",
-    "ucsc_id",
-    "vega_id",
-    "ccds_id",
-    "ena",
-    "mgd_id",
-    "rgd_id",
+#: The `source` schema enum for resolve_gene_by_xref. It is EXACTLY the set of
+#: values the runtime accepts (every XREF_SOURCE_ALIASES key, canonical keys AND
+#: synonyms), so the declared enum is never NARROWER than the runtime: a
+#: schema-aware client is never told a runtime-valid source is invalid. Guarded
+#: against drift by tests/unit/test_identifiers.py.
+XREF_LOOKUP_SOURCE_ENUM: tuple[str, ...] = tuple(sorted(XREF_SOURCE_ALIASES))
+
+#: Reverse-lookup source fields whose ids legitimately carry a trailing ``.<version>``
+#: (Ensembl gene, RefSeq accession, MANE Select transcript). ONLY these are matched
+#: version-insensitively; a numeric id (entrez_id/omim_id) never is, so entrez_id
+#: '673.99' is malformed, not a match on '673' (issue #26 review).
+VERSIONED_XREF_FIELDS: frozenset[str] = frozenset(
+    {"ensembl_gene_id", "refseq_accession", "mane_select"}
 )
+
+#: Reverse-lookup source fields whose value must be a bare integer. A non-integer is
+#: a malformed id (invalid_input), never a version-stripped false match: entrez_id
+#: '673.99' is malformed, not a match on '673'.
+NUMERIC_XREF_FIELDS: frozenset[str] = frozenset({"entrez_id"})
 
 #: response_mode -> the cross-reference fields get_gene_cross_references emits when
 #: no explicit ``databases=`` filter is given. ``minimal`` keeps the two anchor ids;
@@ -176,6 +178,12 @@ XREF_FILTER_ALIASES: dict[str, str] = {
     "rgd": "rgd_id",
     "pubmed": "pubmed_id",
 }
+
+#: The `databases` item enum for get_gene_cross_references. EXACTLY the set the
+#: runtime accepts (every XREF_FILTER_ALIASES key), so a schema-aware client sees the
+#: full closed vocabulary and never rejects a runtime-valid label. Guarded against
+#: drift by tests/unit/test_capabilities.py.
+XREF_FILTER_ENUM: tuple[str, ...] = tuple(sorted(XREF_FILTER_ALIASES))
 
 #: The four HGNC locus groups (with live record counts as of 2026-06).
 LOCUS_GROUPS: tuple[str, ...] = (

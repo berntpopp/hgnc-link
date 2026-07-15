@@ -8,11 +8,16 @@ to its gene, and a syntactically malformed HGNC id must be invalid_input, not no
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from hgnc_link.exceptions import InvalidInputError, NotFoundError
+from hgnc_link.config import HgncDataConfig
+from hgnc_link.data.repository import HgncRepository
+from hgnc_link.exceptions import AmbiguousQueryError, InvalidInputError, NotFoundError
+from hgnc_link.ingest.builder import build_database
 from hgnc_link.services.hgnc_service import HgncService
 
 # --------------------------------------------------------------------------- D1 (HIGH)
@@ -98,3 +103,69 @@ async def test_versioned_accession_tool_resolves(facade: Any, structured: Any) -
     )
     assert payload["success"] is True
     assert payload["results"][0]["symbol"] == "BRAF"
+
+
+# ------------------------------------------------------- rework: no false version matches
+# Version stripping must be scoped: a numeric id is never version-stripped, and the MANE
+# fallback never overrides the source the caller named.
+
+
+def test_numeric_id_with_a_dot_is_invalid_not_a_stripped_match(service: HgncService) -> None:
+    """entrez_id=673.99 is malformed (invalid_input), NOT a version-stripped match on 673."""
+    with pytest.raises(InvalidInputError) as exc_info:
+        service.lookup_by_xref("entrez_id", "673.99")
+    assert exc_info.value.field == "value"
+    # sanity: the bare integer still resolves
+    assert service.lookup_by_xref("entrez_id", "673")["results"][0]["symbol"] == "BRAF"
+
+
+def test_mane_fallback_never_overrides_the_named_source(service: HgncService) -> None:
+    """source='omim_id' must NOT silently cross-resolve a MANE transcript to WT1."""
+    with pytest.raises(NotFoundError):
+        service.lookup_by_xref("omim_id", "NM_024426")
+    # a non-transcript, non-numeric source is equally not cross-resolved
+    with pytest.raises(NotFoundError):
+        service.lookup_by_xref("uniprot", "NM_024426")
+
+
+# ------------------------------------------------------- rework: cross-gene collision guard
+
+
+@pytest.fixture
+def collision_service(tmp_path: Path) -> HgncService:
+    """A 2-gene index where two DISTINCT genes share a MANE base with different versions."""
+    docs = {
+        "response": {
+            "docs": [
+                {"hgnc_id": "HGNC:900201", "symbol": "COLA", "mane_select": ["NM_9999999.1"]},
+                {"hgnc_id": "HGNC:900202", "symbol": "COLB", "mane_select": ["NM_9999999.2"]},
+            ]
+        }
+    }
+    src = tmp_path / "docs.json"
+    src.write_text(json.dumps(docs), encoding="utf-8")
+    cfg = HgncDataConfig(data_dir=tmp_path, db_filename="collide.sqlite")
+    build_database(cfg, complete_set_path=src, withdrawn_path=None, etag=None, last_modified=None)
+    return HgncService(HgncRepository(cfg.db_path))
+
+
+def test_version_collision_across_genes_is_ambiguous_not_merged(
+    collision_service: HgncService,
+) -> None:
+    """An unversioned base that matches two DIFFERENT genes is ambiguous, never merged."""
+    with pytest.raises(AmbiguousQueryError) as exc_info:
+        collision_service.lookup_by_xref("mane_select", "NM_9999999")
+    assert len(exc_info.value.candidates) == 2
+
+
+def test_exact_versioned_id_picks_the_one_gene(collision_service: HgncService) -> None:
+    """An EXACT versioned id resolves to its single gene (no version collapse)."""
+    res = collision_service.lookup_by_xref("mane_select", "NM_9999999.1")
+    assert res["count"] == 1
+    assert res["results"][0]["symbol"] == "COLA"
+
+
+def test_versioned_like_does_not_match_a_non_digit_suffix(collision_service: HgncService) -> None:
+    """`NM_9999999.BAD` must not match `NM_9999999.1/.2` (version must be `.<digits>`)."""
+    with pytest.raises(NotFoundError):
+        collision_service.lookup_by_xref("mane_select", "NM_9999999.BAD")

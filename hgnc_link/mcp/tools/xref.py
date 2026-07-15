@@ -49,9 +49,11 @@ def register_xref_tools(mcp: FastMCP) -> None:
                     "are also accepted."
                 ),
                 examples=["ensembl_gene_id", "refseq", "mane_select"],
-                # Declare the canonical closed vocabulary (S4). The pydantic type stays
-                # `str` so the runtime remains a SUPERSET (it also accepts the synonyms
-                # above): every schema-valid value is always runtime-valid.
+                # Declare the closed vocabulary (S4) as EXACTLY the runtime-accepted set
+                # (canonical keys AND synonyms), so the enum is never narrower than the
+                # runtime: a schema-aware client never rejects a runtime-valid source
+                # (e.g. 'refseq', 'ncbi'). The pydantic type stays `str` so the service
+                # owns rejection of a truly-unknown source with an actionable error.
                 json_schema_extra={"enum": list(XREF_LOOKUP_SOURCE_ENUM)},
             ),
         ],
