@@ -6,6 +6,12 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Re-vendored the behaviour conformance gate from genefoundry-router `ba09fdc`
+  (`docs/conformance/behaviour.py` blob `30d639242b`) so live MCP contract checks
+  treat not-found example probes as inconclusive instead of failures.
+
 ## [2.1.0] - 2026-07-15
 
 ### Fixed
