@@ -8,12 +8,15 @@ message.
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent
 from pydantic import ValidationError as PydanticValidationError
 
 from hgnc_link.exceptions import (
@@ -44,7 +47,7 @@ logger = logging.getLogger(__name__)
 # not declared once via get_server_capabilities. Static provenance (citation,
 # HGNC release, research_use_notice text) still lives only in
 # get_server_capabilities to conserve tokens.
-_RETRYABLE = {"rate_limited", "upstream_unavailable", "data_unavailable"}
+_RETRYABLE = {"rate_limited", "upstream_unavailable"}
 _UNSAFE_FOR_CLINICAL_USE = True
 
 
@@ -76,14 +79,17 @@ def _request_id() -> str:
 # survives code-point stripping (the deepest fleet-review lesson). The actionable
 # detail travels in structured, server-authored fields (field / allowed_values /
 # hint / candidates / next_commands); the raw exception text stays server-side.
+# Keys are the closed error_code enum (Response-Envelope Standard v1): invalid_input,
+# not_found, ambiguous_query, upstream_unavailable, rate_limited, internal. The local
+# HGNC index being unbuilt/unreadable maps onto upstream_unavailable (retryable — the
+# boot refresh lands shortly), not a bespoke code.
 _PUBLIC_MESSAGE: dict[str, str] = {
     "not_found": "The requested HGNC record was not found.",
     "ambiguous_query": "The request matched several HGNC records; see candidates.",
     "invalid_input": "The request was invalid. See field / allowed_values / hint.",
-    "data_unavailable": "The local HGNC database is unavailable.",
     "rate_limited": "HGNC REST rate limit hit. Retry shortly.",
-    "upstream_unavailable": "The HGNC upstream is temporarily unavailable.",
-    "internal_error": "An internal error occurred. The request was not completed.",
+    "upstream_unavailable": "HGNC data is temporarily unavailable. Retry shortly.",
+    "internal": "An internal error occurred. The request was not completed.",
 }
 
 # Fixed, server-authored recovery hint for invalid_input. The exception's own
@@ -107,14 +113,12 @@ def _classify(exc: BaseException) -> tuple[str, str]:
         code = "ambiguous_query"
     elif isinstance(exc, InvalidInputError | PydanticValidationError):
         code = "invalid_input"
-    elif isinstance(exc, DataUnavailableError):
-        code = "data_unavailable"
+    elif isinstance(exc, DataUnavailableError | ServiceUnavailableError | DownloadError):
+        code = "upstream_unavailable"
     elif isinstance(exc, RateLimitError):
         code = "rate_limited"
-    elif isinstance(exc, ServiceUnavailableError | DownloadError):
-        code = "upstream_unavailable"
     else:
-        code = "internal_error"
+        code = "internal"
     return code, _PUBLIC_MESSAGE[code]
 
 
@@ -153,6 +157,12 @@ def _error_envelope(exc: BaseException, context: McpErrorContext) -> dict[str, A
             envelope["allowed_values"] = safe_allowed_values(exc.allowed)  # drop prose
         if exc.hint is not None:
             envelope["hint"] = _INVALID_INPUT_HINT  # fixed server string, not exc.hint
+        if exc.did_you_mean is not None:
+            # A suggestion drawn from a CLOSED server vocabulary; validated through the
+            # allowed-value grammar (drops anything prose-like) before it is surfaced.
+            suggestion = safe_allowed_values(exc.did_you_mean)
+            if suggestion:
+                envelope["did_you_mean"] = suggestion
     if isinstance(exc, AmbiguousQueryError) and exc.candidates:
         safe_cands = safe_candidates(exc.candidates)  # validated ids only; name dropped
         envelope["candidates"] = safe_cands
@@ -238,8 +248,15 @@ async def run_mcp_tool(
     call: Callable[[], Awaitable[dict[str, Any]]],
     *,
     context: McpErrorContext | None = None,
-) -> dict[str, Any]:
-    """Execute a tool body, returning the result dict or a structured error dict."""
+) -> dict[str, Any] | ToolResult:
+    """Execute a tool body, returning the success dict or a structured error result.
+
+    A success returns a plain dict (FastMCP wraps it, emitting ``structuredContent``).
+    An error returns a ``ToolResult(is_error=True)`` carrying the SAME structured
+    envelope plus a TextContent JSON mirror, so the protocol ``isError`` flag is set
+    (Response-Envelope Standard v1: REQUIRED so a client surfaces the error to the
+    model for self-correction) while the machine-readable envelope is preserved.
+    """
     ctx = context or McpErrorContext(tool_name=tool_name)
     try:
         result = await call()
@@ -265,4 +282,8 @@ async def run_mcp_tool(
             envelope["error_code"],
             exc.__class__.__name__,
         )
-        return envelope
+        return ToolResult(
+            structured_content=envelope,
+            content=[TextContent(type="text", text=json.dumps(envelope))],
+            is_error=True,
+        )

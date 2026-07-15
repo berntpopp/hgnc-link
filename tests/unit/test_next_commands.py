@@ -67,13 +67,13 @@ def test_default_error_next_commands() -> None:
         default_error_next_commands("get_gene", "not_found", {"query": "BRAF"})[0]["tool"]
         == "search_genes"
     )
-    # data_unavailable -> diagnostics
+    # upstream_unavailable -> diagnostics
     assert (
-        default_error_next_commands("get_gene", "data_unavailable", {})[0]["tool"]
+        default_error_next_commands("get_gene", "upstream_unavailable", {})[0]["tool"]
         == "get_hgnc_diagnostics"
     )
     # fallback
     assert (
-        default_error_next_commands("resolve_gene_by_xref", "internal_error", {})[0]["tool"]
+        default_error_next_commands("resolve_gene_by_xref", "internal", {})[0]["tool"]
         == "get_server_capabilities"
     )

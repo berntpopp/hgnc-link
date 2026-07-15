@@ -9,7 +9,6 @@ from pydantic import Field
 from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from hgnc_link.mcp.envelope import McpErrorContext, run_mcp_tool
 from hgnc_link.mcp.next_commands import after_resolve, cmd
-from hgnc_link.mcp.schemas import RESOLVE_BATCH_SCHEMA, RESOLVE_SCHEMA
 from hgnc_link.mcp.service_adapters import get_hgnc_service
 from hgnc_link.mcp.tools._common import QueryStr, ResponseMode
 
@@ -24,7 +23,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         name="resolve_symbol",
         title="Resolve Gene Symbol",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=RESOLVE_SCHEMA,
+        output_schema=None,
         tags={"resolve"},
         description=(
             "Resolve any gene symbol or HGNC id to its canonical record. Accepts a "
@@ -55,7 +54,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         name="resolve_symbols_batch",
         title="Resolve Gene Symbols (Batch)",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=RESOLVE_BATCH_SCHEMA,
+        output_schema=None,
         tags={"resolve"},
         description=(
             "Resolve a batch of gene symbols / HGNC ids in one call (max 200). Each "
@@ -69,7 +68,11 @@ def register_resolve_tools(mcp: FastMCP) -> None:
     async def resolve_symbols_batch(
         queries: Annotated[
             list[str],
-            Field(max_length=200, description="Gene symbols and/or HGNC ids to resolve (max 200)."),
+            Field(
+                max_length=200,
+                description="Gene symbols and/or HGNC ids to resolve (max 200).",
+                examples=[["BRCA1", "TP53", "HGNC:1100"]],
+            ),
         ],
         response_mode: ResponseMode = "compact",
     ) -> dict[str, Any]:

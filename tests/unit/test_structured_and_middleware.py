@@ -5,10 +5,15 @@ from __future__ import annotations
 from typing import Any
 
 
-async def test_every_tool_declares_output_schema(facade: Any) -> None:
+async def test_no_tool_publishes_output_schema(facade: Any) -> None:
+    """Tool-Surface Budget Standard v1: outputSchema is suppressed (~40% of the surface).
+
+    Suppression does NOT drop structuredContent -- every tool returns a dict envelope,
+    which FastMCP still serialises (see test_structured_content_and_textcontent_fallback).
+    """
     tools = await facade.list_tools()
     assert tools
-    assert all(t.output_schema is not None for t in tools)
+    assert all(t.output_schema is None for t in tools)
 
 
 async def test_batch_queries_schema_capped_at_200(facade: Any) -> None:

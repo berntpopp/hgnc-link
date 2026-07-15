@@ -47,8 +47,8 @@ HGNC_USAGE_NOTES = (
 )
 
 HGNC_REFERENCE_NOTES = (
-    "Error codes: invalid_input, not_found, ambiguous_query, data_unavailable, "
-    "rate_limited, upstream_unavailable, internal_error. A withdrawn/merged symbol "
+    "Error codes: invalid_input, not_found, ambiguous_query, upstream_unavailable, "
+    "rate_limited, internal. A withdrawn/merged symbol "
     "returns not_found with obsolete:true + replaced_by + a next_command to the "
     "successor record. The local index is built from hgnc_complete_set.json + "
     "withdrawn.txt (HGNC updates Tue/Fri) and refreshed by an external cron job; "

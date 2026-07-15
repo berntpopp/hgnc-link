@@ -173,10 +173,9 @@ def build_capabilities() -> dict[str, Any]:
             "invalid_input",
             "not_found",
             "ambiguous_query",
-            "data_unavailable",
-            "rate_limited",
             "upstream_unavailable",
-            "internal_error",
+            "rate_limited",
+            "internal",
         ],
         "limits": {
             "max_batch_queries": 200,

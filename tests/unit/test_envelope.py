@@ -23,14 +23,26 @@ from hgnc_link.mcp.envelope import McpErrorContext, McpToolError, _classify, run
         (WithdrawnEntryError("X", status="Merged/Split"), "not_found"),
         (AmbiguousQueryError("x"), "ambiguous_query"),
         (InvalidInputError("x"), "invalid_input"),
-        (DataUnavailableError("x"), "data_unavailable"),
+        (DataUnavailableError("x"), "upstream_unavailable"),
         (RateLimitError("x"), "rate_limited"),
         (ServiceUnavailableError("x"), "upstream_unavailable"),
-        (RuntimeError("boom"), "internal_error"),
+        (RuntimeError("boom"), "internal"),
     ],
 )
 def test_classify(exc: Exception, code: str) -> None:
     assert _classify(exc)[0] == code
+
+
+def _err_env(out: object) -> dict:
+    """Read the structured error envelope from a run_mcp_tool error result.
+
+    An error now returns a ToolResult(is_error=True) (Response-Envelope v1: isError is
+    REQUIRED); the machine-readable envelope rides in structured_content.
+    """
+    assert getattr(out, "is_error", None) is True, "error result must carry isError:true"
+    env = out.structured_content
+    assert isinstance(env, dict)
+    return env
 
 
 async def test_success_injects_meta() -> None:
@@ -63,10 +75,11 @@ async def test_error_is_returned_not_raised() -> None:
     out = await run_mcp_tool(
         "get_gene", call, context=McpErrorContext("get_gene", arguments={"query": "X"})
     )
-    assert out["success"] is False
-    assert out["error_code"] == "not_found"
-    assert out["recovery_action"] == "reformulate_input"
-    assert out["_meta"]["next_commands"]  # always present
+    env = _err_env(out)
+    assert env["success"] is False
+    assert env["error_code"] == "not_found"
+    assert env["recovery_action"] == "reformulate_input"
+    assert env["_meta"]["next_commands"]  # always present
 
 
 async def test_invalid_input_carries_field_allowed_hint() -> None:
@@ -76,11 +89,12 @@ async def test_invalid_input_carries_field_allowed_hint() -> None:
     out = await run_mcp_tool(
         "resolve_gene_by_xref", call, context=McpErrorContext("resolve_gene_by_xref")
     )
-    assert out["field"] == "source"
-    assert out["allowed_values"] == ["a", "b"]
+    env = _err_env(out)
+    assert env["field"] == "source"
+    assert env["allowed_values"] == ["a", "b"]
     # hint is a FIXED server string (the exception's own hint is never surfaced --
     # it could carry copied prose); field + allowed_values carry the detail.
-    assert out["hint"] and "use a" not in out["hint"]
+    assert env["hint"] and "use a" not in env["hint"]
 
 
 async def test_withdrawn_envelope_flags_obsolete_and_redirects() -> None:
@@ -92,9 +106,10 @@ async def test_withdrawn_envelope_flags_obsolete_and_redirects() -> None:
         )
 
     out = await run_mcp_tool("resolve_symbol", call, context=McpErrorContext("resolve_symbol"))
-    assert out["obsolete"] is True
-    assert out["replaced_by"][0]["symbol"] == "UBA1"
-    assert out["_meta"]["next_commands"][0] == {
+    env = _err_env(out)
+    assert env["obsolete"] is True
+    assert env["replaced_by"][0]["symbol"] == "UBA1"
+    assert env["_meta"]["next_commands"][0] == {
         "tool": "get_gene",
         "arguments": {"query": "HGNC:12469"},
     }
@@ -107,9 +122,10 @@ async def test_ambiguous_envelope_lists_candidates() -> None:
         )
 
     out = await run_mcp_tool("get_gene", call, context=McpErrorContext("get_gene"))
-    assert out["error_code"] == "ambiguous_query"
-    assert len(out["candidates"]) == 2
-    assert out["_meta"]["next_commands"][0]["tool"] == "get_gene"
+    env = _err_env(out)
+    assert env["error_code"] == "ambiguous_query"
+    assert len(env["candidates"]) == 2
+    assert env["_meta"]["next_commands"][0]["tool"] == "get_gene"
 
 
 async def test_mcp_tool_error_propagates_code() -> None:
@@ -117,5 +133,6 @@ async def test_mcp_tool_error_propagates_code() -> None:
         raise McpToolError(error_code="rate_limited", message="slow down")
 
     out = await run_mcp_tool("t", call, context=McpErrorContext("t"))
-    assert out["error_code"] == "rate_limited"
-    assert out["retryable"] is True
+    env = _err_env(out)
+    assert env["error_code"] == "rate_limited"
+    assert env["retryable"] is True

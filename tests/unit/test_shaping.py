@@ -29,10 +29,20 @@ def test_response_modes_constant() -> None:
     assert RESPONSE_MODES == ("minimal", "compact", "standard", "full")
 
 
-def test_full_and_standard_are_identity() -> None:
+def test_full_is_identity_and_standard_is_a_strict_subset() -> None:
+    """`full` is the complete record; `standard` genuinely returns less (issue #26 D3).
+
+    They were byte-identical (a phantom tier); `standard` now omits the internal-only
+    provenance fields so escalating standard->full pays for real extra detail.
+    """
     g = _gene()
     assert shape_gene(g, "full") == g
-    assert shape_gene(g, "standard") == g
+    standard = shape_gene(g, "standard")
+    assert standard != g
+    assert "uuid" not in standard  # internal-only, full-only
+    assert standard["date_modified"] == g["date_modified"]  # standard is still complete
+    # full is a strict superset of standard.
+    assert set(shape_gene(g, "full")) > set(standard)
 
 
 def test_compact_drops_dates_and_empties() -> None:

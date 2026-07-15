@@ -16,11 +16,21 @@ from typing import Any
 
 from hgnc_link.constants import LIST_FIELDS
 from hgnc_link.exceptions import DataUnavailableError
-from hgnc_link.identifiers import normalize_hgnc_id
+from hgnc_link.identifiers import normalize_hgnc_id, strip_accession_version
 
 _FTS_TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 # Priority used when a symbol resolves to several lookup rows.
 _TYPE_PRIORITY = {"current": 0, "previous": 1, "alias": 2}
+
+
+def _escape_like(text: str) -> str:
+    """Escape LIKE wildcards (``%``/``_``) and the escape char in a literal value.
+
+    RefSeq/CCDS accessions embed ``_`` (``NM_024426``), which LIKE would otherwise
+    treat as a single-character wildcard; escape them so only the ``.%`` version
+    suffix we append is a wildcard.
+    """
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 class HgncRepository:
@@ -179,10 +189,23 @@ class HgncRepository:
     # -- cross references ------------------------------------------------------
 
     def lookup_by_xref(self, source: str, value: str) -> list[str]:
-        """Return HGNC IDs whose ``source`` cross-reference equals ``value``."""
+        """Return HGNC IDs whose ``source`` cross-reference matches ``value``.
+
+        Matching is **version-insensitive** in both directions, because the id a
+        caller holds and the id HGNC indexes may differ only by a trailing ``.<ver>``
+        sequence version: VEP/GENCODE/clinical reports emit ``ENSG…​.23`` while HGNC
+        stores the unversioned ``ensembl_gene_id``, whereas ``mane_select``/``ucsc``
+        are stored *with* their version. So a lookup matches when the stored value
+        equals the query, equals the version-stripped query, or is the query plus a
+        ``.<digits>`` version suffix.
+        """
+        val_upper = value.strip().upper()
+        stripped = strip_accession_version(val_upper)
+        versioned_like = _escape_like(stripped) + ".%"
         rows = self._conn.execute(
-            "SELECT DISTINCT hgnc_id FROM xref WHERE source = ? AND value_upper = ?",
-            (source, value.strip().upper()),
+            "SELECT DISTINCT hgnc_id FROM xref WHERE source = ? AND ("
+            "value_upper = ? OR value_upper = ? OR value_upper LIKE ? ESCAPE '\\')",
+            (source, val_upper, stripped, versioned_like),
         ).fetchall()
         return [r["hgnc_id"] for r in rows]
 

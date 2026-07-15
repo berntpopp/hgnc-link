@@ -41,17 +41,21 @@ class InvalidInputError(HgncError):
         *,
         allowed: list[str] | None = None,
         hint: str | None = None,
+        did_you_mean: list[str] | None = None,
     ) -> None:
         """Initialise with the offending field and optional recovery data.
 
         ``allowed`` and ``hint`` are surfaced as structured top-level keys on the
         error envelope (``allowed_values``/``hint``) so a consumer never has to
-        parse them out of a (length-capped) message.
+        parse them out of a (length-capped) message. ``did_you_mean`` carries a
+        best-guess correction drawn from a CLOSED server vocabulary (never caller
+        input), surfaced as the ``did_you_mean`` envelope field.
         """
         super().__init__(message)
         self.field = field
         self.allowed = allowed
         self.hint = hint
+        self.did_you_mean = did_you_mean
 
 
 class NotFoundError(HgncError):

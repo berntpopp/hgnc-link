@@ -108,7 +108,30 @@ XREF_SOURCE_ALIASES: dict[str, str] = {
     "mgi": "mgd_id",
     "rgd_id": "rgd_id",
     "rgd": "rgd_id",
+    # MANE Select transcript (Ensembl ENST + RefSeq NM_). Indexed by the builder
+    # (mane_select is an XREF_FIELDS entry) but previously not an accepted source,
+    # so the transcript the server itself emits could not be resolved back (issue #26).
+    "mane_select": "mane_select",
+    "mane": "mane_select",
 }
+
+#: Canonical reverse-lookup source keys advertised as the `source` schema enum. The
+#: runtime (XREF_SOURCE_ALIASES) is a SUPERSET of this (it also accepts synonyms such
+#: as 'ncbi'/'ensembl'/'mane'), so every schema-valid value is always runtime-valid.
+XREF_LOOKUP_SOURCE_ENUM: tuple[str, ...] = (
+    "entrez_id",
+    "ensembl_gene_id",
+    "uniprot_ids",
+    "refseq_accession",
+    "mane_select",
+    "omim_id",
+    "ucsc_id",
+    "vega_id",
+    "ccds_id",
+    "ena",
+    "mgd_id",
+    "rgd_id",
+)
 
 #: response_mode -> the cross-reference fields get_gene_cross_references emits when
 #: no explicit ``databases=`` filter is given. ``minimal`` keeps the two anchor ids;

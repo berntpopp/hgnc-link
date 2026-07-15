@@ -10,7 +10,6 @@ from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from hgnc_link.mcp.capabilities import collect_tool_signatures, project_capabilities
 from hgnc_link.mcp.envelope import McpErrorContext, run_mcp_tool
 from hgnc_link.mcp.next_commands import cmd
-from hgnc_link.mcp.schemas import CAPABILITIES_SCHEMA, DIAGNOSTICS_SCHEMA
 from hgnc_link.mcp.service_adapters import get_hgnc_service
 
 if TYPE_CHECKING:
@@ -24,7 +23,7 @@ def register_discovery_tools(mcp: FastMCP) -> None:
         name="get_server_capabilities",
         title="Get Server Capabilities",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=CAPABILITIES_SCHEMA,
+        output_schema=None,
         tags={"discovery"},
         description=(
             "Return the hgnc-link discovery surface. detail='summary' (default) is "
@@ -57,12 +56,12 @@ def register_discovery_tools(mcp: FastMCP) -> None:
         name="get_hgnc_diagnostics",
         title="Get HGNC Diagnostics",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=DIAGNOSTICS_SCHEMA,
+        output_schema=None,
         tags={"discovery"},
         description=(
             "Report the local HGNC index status: whether the data is built, the "
             "loaded release date, gene/withdrawn counts, schema version, and when it "
-            "was built. Use this to confirm freshness or diagnose a data_unavailable "
+            "was built. Use this to confirm freshness or diagnose an unavailable-data "
             "error. "
             "Signature: get_hgnc_diagnostics()."
         ),
