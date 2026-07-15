@@ -80,3 +80,10 @@ async def test_collect_signatures_and_overview(facade) -> None:  # type: ignore[
     overview = await build_tools_overview(facade)
     assert overview["tool_count"] == len(TOOLS)
     assert all(e["summary"] for e in overview["tools"])
+
+
+def test_databases_item_enum_is_never_narrower_than_runtime() -> None:
+    """The advertised `databases` item enum equals the full runtime-accepted set (review #5)."""
+    from hgnc_link.constants import XREF_FILTER_ALIASES, XREF_FILTER_ENUM
+
+    assert set(XREF_FILTER_ENUM) == set(XREF_FILTER_ALIASES)

@@ -7,16 +7,9 @@ withdrawn redirect) returns match provenance and surfaces ambiguity.
 
 from __future__ import annotations
 
-import difflib
 from typing import TYPE_CHECKING, Any
 
-from hgnc_link.constants import (
-    XREF_FIELDS,
-    XREF_FILTER_ALIASES,
-    XREF_SOURCE_ALIASES,
-    XREF_TIER_COMPACT,
-    XREF_TIER_MINIMAL,
-)
+from hgnc_link.constants import VERSIONED_XREF_FIELDS, XREF_FIELDS, XREF_SOURCE_ALIASES
 from hgnc_link.exceptions import (
     AmbiguousQueryError,
     DataUnavailableError,
@@ -24,7 +17,7 @@ from hgnc_link.exceptions import (
     NotFoundError,
     WithdrawnEntryError,
 )
-from hgnc_link.identifiers import infer_xref_source, normalize_hgnc_id
+from hgnc_link.identifiers import infer_xref_source, looks_like_transcript, normalize_hgnc_id
 from hgnc_link.safe_fields import (
     safe_candidates,
     safe_replaced_by,
@@ -32,6 +25,12 @@ from hgnc_link.safe_fields import (
     strip_forbidden,
 )
 from hgnc_link.services.shaping import shape_gene, shape_resolution, shape_summary
+from hgnc_link.services.xref_filter import (
+    reject_malformed_hgnc_id,
+    resolve_xref_filter,
+    validate_xref_value,
+    xref_tier_fields,
+)
 
 if TYPE_CHECKING:
     from hgnc_link.api.client import HgncRestClient
@@ -119,6 +118,7 @@ class HgncService:
         hgnc_id = normalize_hgnc_id(raw)
         if hgnc_id:
             return self._resolve_id(raw, hgnc_id, mode)
+        reject_malformed_hgnc_id(raw)
 
         pairs = self.repo.lookup_symbol(raw)
         if pairs:
@@ -294,6 +294,7 @@ class HgncService:
                     hgnc_id, status=withdrawn["status"], replaced_by=withdrawn["replaced_by"]
                 )
             raise NotFoundError(f"No HGNC record for {hgnc_id}.")
+        reject_malformed_hgnc_id(raw)
         pairs = self.repo.lookup_symbol(raw)
         if pairs:
             best_type = pairs[0][1]
@@ -347,9 +348,9 @@ class HgncService:
         filter overrides the tier and returns exactly those fields.
         """
         gene, match_type = self._resolve_to_gene((query or "").strip())
-        wanted = _resolve_xref_filter(databases)
+        wanted = resolve_xref_filter(databases)
         if wanted is None:
-            wanted = _xref_tier_fields(mode)
+            wanted = xref_tier_fields(mode)
         xrefs: dict[str, Any] = {}
         for field, label in XREF_FIELDS:
             if wanted is not None and field not in wanted:
@@ -367,32 +368,71 @@ class HgncService:
         }
 
     def lookup_by_xref(self, source: str, value: str, mode: str = "compact") -> dict[str, Any]:
-        """Reverse lookup: external identifier -> HGNC gene(s)."""
-        src = (source or "").strip().lower()
-        field = XREF_SOURCE_ALIASES.get(src)
-        if field is None:
-            allowed = sorted(set(XREF_SOURCE_ALIASES.values()))
-            raise InvalidInputError(
-                f"Unknown cross-reference source '{source}'.",
-                field="source",
-                allowed=allowed,
-                hint="e.g. entrez_id, ensembl_gene_id, uniprot, omim, refseq.",
-            )
+        """Reverse lookup: external identifier -> HGNC gene(s).
+
+        EXACT match first; only ``VERSIONED_XREF_FIELDS`` fall back to
+        version-insensitive matching (a numeric id like ``entrez_id=673.99`` is never
+        version-collapsed). A version match hitting >1 DISTINCT gene is ambiguous_query.
+        """
+        field = self._resolve_xref_source(source)
         val = (value or "").strip()
         if not val:
             raise InvalidInputError("value must be non-empty.", field="value")
-        hgnc_ids = self.repo.lookup_by_xref(field, val)
+        validate_xref_value(field, val)
+
+        hgnc_ids = self.repo.lookup_by_xref(field, val)  # exact
+        matched_field = field
+        if not hgnc_ids and field in VERSIONED_XREF_FIELDS:
+            hgnc_ids = self.repo.lookup_by_xref_versioned(field, val)
+            if len(hgnc_ids) > 1:
+                raise self._xref_ambiguity(val, hgnc_ids)
+        if not hgnc_ids:
+            matched_field, hgnc_ids = self._mane_fallback(field, val)
         if not hgnc_ids:
             raise NotFoundError(f"No HGNC gene with {field}={val}.")
+
         genes = [self.repo.get_gene(hid) for hid in hgnc_ids]
         summaries = [shape_summary(_brief(g, "current"), mode) for g in genes if g is not None]
         return {
-            "source": field,
-            "source_label": _XREF_LABELS.get(field, field),
+            "source": matched_field,
+            "source_label": _XREF_LABELS.get(matched_field, matched_field),
             "value": val,
             "count": len(summaries),
             "results": summaries,
         }
+
+    def _resolve_xref_source(self, source: str) -> str:
+        field = XREF_SOURCE_ALIASES.get((source or "").strip().lower())
+        if field is None:
+            raise InvalidInputError(
+                f"Unknown cross-reference source '{source}'.",
+                field="source",
+                allowed=sorted(set(XREF_SOURCE_ALIASES.values())),
+                hint="e.g. entrez_id, ensembl_gene_id, uniprot, omim, refseq, mane_select.",
+            )
+        return field
+
+    def _mane_fallback(self, field: str, val: str) -> tuple[str, list[str]]:
+        """Resolve a MANE transcript back to its gene, ONLY for a refseq/ensembl source.
+
+        Never fires for another named source (e.g. ``omim_id``): the caller's source is
+        not silently overridden. Returns ``(matched_field, ids)``.
+        """
+        if field not in ("refseq_accession", "ensembl_gene_id") or not looks_like_transcript(val):
+            return field, []
+        ids = self.repo.lookup_by_xref_versioned("mane_select", val)
+        if len(ids) > 1:
+            raise self._xref_ambiguity(val, ids)
+        return ("mane_select" if ids else field), ids
+
+    def _xref_ambiguity(self, val: str, hgnc_ids: list[str]) -> AmbiguousQueryError:
+        candidates = [
+            _brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, "current") for hid in hgnc_ids
+        ]
+        return AmbiguousQueryError(
+            f"'{val}' matched {len(hgnc_ids)} genes after version normalization; pick one.",
+            candidates=candidates,
+        )
 
     def get_gene_group(
         self, group: str, *, limit: int = 200, offset: int = 0, mode: str = "compact"
@@ -445,46 +485,6 @@ class HgncService:
             "next_offset": (offset + limit) if truncated else None,
             "members": members,
         }
-
-
-def _resolve_xref_filter(databases: list[str] | None) -> set[str] | None:
-    """Normalize the ``databases`` filter to canonical field keys.
-
-    Friendly labels/synonyms map to the field key; an unrecognized key raises
-    ``invalid_input`` with a did-you-mean. ``None`` means "no filter".
-    """
-    if not databases:
-        return None
-    resolved: set[str] = set()
-    unknown: list[str] = []
-    for db in databases:
-        canon = XREF_FILTER_ALIASES.get((db or "").strip().lower())
-        if canon is None:
-            unknown.append(db)
-        else:
-            resolved.add(canon)
-    if unknown:
-        allowed = [field for field, _ in XREF_FIELDS]
-        guess = difflib.get_close_matches(
-            (unknown[0] or "").strip().lower(), list(XREF_FILTER_ALIASES), n=1, cutoff=0.6
-        )
-        dym = f"Did you mean '{XREF_FILTER_ALIASES[guess[0]]}'? " if guess else ""
-        raise InvalidInputError(
-            f"Unknown cross-reference database(s): {', '.join(unknown)}.",
-            field="databases",
-            allowed=allowed,
-            hint=dym + "Use a field key or label, e.g. ensembl, uniprot, mane, omim.",
-        )
-    return resolved
-
-
-def _xref_tier_fields(mode: str) -> set[str] | None:
-    """The default xref field whitelist for a verbosity tier (``None`` = all populated)."""
-    if mode == "minimal":
-        return set(XREF_TIER_MINIMAL)
-    if mode == "compact":
-        return set(XREF_TIER_COMPACT)
-    return None  # standard / full: every populated field
 
 
 def _brief(gene: dict[str, Any], symbol_type: str) -> dict[str, Any]:

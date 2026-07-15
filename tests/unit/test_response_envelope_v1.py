@@ -74,18 +74,22 @@ async def test_error_envelope_is_flat_never_nested_and_never_raises() -> None:
         "get_gene", call, context=McpErrorContext("get_gene", arguments={"query": "ZZZZZ"})
     )
 
-    assert result["success"] is False
-    assert result["error_code"] == "not_found"
-    assert isinstance(result["message"], str)
-    assert result["message"]
-    assert result["retryable"] is False
-    assert isinstance(result["recovery_action"], str)
-    assert result["recovery_action"]
-    assert "error" not in result
-    assert result["_meta"]["tool"] == "get_gene"
+    # Response-Envelope v1: an error now returns a ToolResult(is_error=True) so the
+    # MCP `isError` flag is set; the flat envelope rides in structured_content.
+    assert result.is_error is True
+    env = result.structured_content
+    assert env["success"] is False
+    assert env["error_code"] == "not_found"
+    assert isinstance(env["message"], str)
+    assert env["message"]
+    assert env["retryable"] is False
+    assert isinstance(env["recovery_action"], str)
+    assert env["recovery_action"]
+    assert "error" not in env
+    assert env["_meta"]["tool"] == "get_gene"
     # Fleet Response-Envelope Standard v1 (2026-07-03): error envelopes stamp
     # the clinical-safety disclaimer per-call too, not just on success.
-    assert result["_meta"]["unsafe_for_clinical_use"] is True
+    assert env["_meta"]["unsafe_for_clinical_use"] is True
 
 
 async def test_error_envelope_flags_retryable_codes_true() -> None:
@@ -96,12 +100,14 @@ async def test_error_envelope_flags_retryable_codes_true() -> None:
 
     result = await run_mcp_tool("resolve_symbol", call, context=McpErrorContext("resolve_symbol"))
 
-    assert result["success"] is False
-    assert result["error_code"] == "rate_limited"
-    assert result["retryable"] is True
-    assert "error" not in result
-    assert result["_meta"]["tool"] == "resolve_symbol"
-    assert result["_meta"]["unsafe_for_clinical_use"] is True
+    assert result.is_error is True
+    env = result.structured_content
+    assert env["success"] is False
+    assert env["error_code"] == "rate_limited"
+    assert env["retryable"] is True
+    assert "error" not in env
+    assert env["_meta"]["tool"] == "resolve_symbol"
+    assert env["_meta"]["unsafe_for_clinical_use"] is True
 
 
 def test_research_use_disclaimer_is_declared_once_in_capabilities() -> None:

@@ -13,6 +13,12 @@ from pathlib import Path
 MAX_LINES = 500
 ROOTS = ("hgnc_link", "tests")
 EXTRA_FILES = ("server.py", "mcp_server.py")
+# Vendored, byte-identical conformance gates from genefoundry-router: they must not
+# be edited to fit a local budget, so they are exempt from the line cap.
+EXEMPT = (
+    "tests/conformance/conformance.py",
+    "tests/conformance/behaviour.py",
+)
 
 
 def main() -> int:
@@ -24,6 +30,8 @@ def main() -> int:
         paths.extend((repo / root).rglob("*.py"))
     for path in paths:
         if not path.exists():
+            continue
+        if path.relative_to(repo).as_posix() in EXEMPT:
             continue
         lines = path.read_text(encoding="utf-8").count("\n") + 1
         if lines > MAX_LINES:

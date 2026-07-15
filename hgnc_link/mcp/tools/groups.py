@@ -9,7 +9,6 @@ from pydantic import Field
 from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from hgnc_link.mcp.envelope import McpErrorContext, run_mcp_tool
 from hgnc_link.mcp.next_commands import after_group
-from hgnc_link.mcp.schemas import GENE_GROUP_SCHEMA
 from hgnc_link.mcp.service_adapters import get_hgnc_service
 from hgnc_link.mcp.tools._common import ResponseMode
 
@@ -24,7 +23,7 @@ def register_group_tools(mcp: FastMCP) -> None:
         name="get_gene_group",
         title="Get Gene Group",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=GENE_GROUP_SCHEMA,
+        output_schema=None,
         tags={"group"},
         description=(
             "Browse a HGNC gene group/family by numeric group id (e.g. '1157') or by "

@@ -6,6 +6,57 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-15
+
+### Fixed
+
+- **Versioned accessions now resolve (issue #26, HIGH).** `resolve_gene_by_xref` with a
+  version-suffixed id — `ENSG00000012048.23`, `NM_000546.6`, the form VEP / GENCODE and
+  every clinical report emit — returned a bare `not_found`, indistinguishable from a gene
+  that does not exist. Reverse cross-reference matching is now version-insensitive in both
+  directions (the caller's version and HGNC's own may differ), so a versioned id resolves
+  to the same gene as the unversioned form.
+- **MANE Select transcripts round-trip (issue #26, MEDIUM).** The MANE Select transcript the
+  server itself emits (`ENST…` / `NM_…`) could not be resolved back to its gene:
+  `source='mane_select'` was rejected outright, and the transcript is often not the gene's
+  primary `refseq_accession`. `mane_select` is now an accepted source, and a MANE transcript
+  labelled `refseq`/`ensembl` falls back to the MANE index.
+- **A malformed HGNC id is `invalid_input`, not `not_found` (issue #26, LOW).** `HGNC:abc`
+  now returns `invalid_input` naming the expected `HGNC:<digits>` shape, so a botched
+  identifier is no longer indistinguishable from a gene that does not exist.
+- **A mistyped argument names the type, not a phantom range (issue #26, LOW).**
+  `search_genes(limit='ten')` reported "must be between 1 and 200" (a range error for a
+  value that is not a number); it now reports "must be an integer".
+- **The promised did-you-mean is returned (issue #26, LOW).** An unknown
+  `get_gene_cross_references` `databases` key now surfaces the `did_you_mean` field the tool
+  description advertises (drawn from the closed cross-reference vocabulary).
+- **`get_gene` `standard` and `full` are no longer identical (issue #26, LOW).** `full` now
+  additionally carries the record's internal provenance fields (`uuid`, `location_sortable`)
+  that `standard` omits, so escalating `standard`→`full` returns genuinely more.
+
+### Changed
+
+- **Every error envelope now sets the MCP `isError: true` flag** (Response-Envelope Standard
+  v1). A returned error carried `success: false` but protocol `isError: false`, so a client
+  branching on `isError` saw a successful call; errors now return a
+  `ToolResult(is_error=True)` carrying the same structured envelope.
+- **`error_code` is closed to the six-value enum** (`invalid_input`, `not_found`,
+  `ambiguous_query`, `upstream_unavailable`, `rate_limited`, `internal`). `data_unavailable`
+  now maps to `upstream_unavailable` and `internal_error` to `internal`.
+- **Tool inputs are fully documented (Tool-Schema Documentation Standard v1).** Every required
+  and array parameter carries `examples`, and the reverse-lookup `source` advertises its
+  canonical closed vocabulary as an `enum` (the runtime still accepts synonyms as a superset).
+- **The published tool surface shrank ~35% (Tool-Surface Budget Standard v1):**
+  `outputSchema` is suppressed (`output_schema=None`, ~2,838t vs ~4,378t; `structuredContent`
+  is unaffected) and input schemas are no longer dereferenced.
+
+### CI
+
+- Vendored the Behaviour Conformance v1 gate (`tests/conformance/behaviour.py` +
+  `test_behaviour_v1.py`, byte-identical from `genefoundry-router`) and wired the behaviour
+  probe step into `.github/workflows/conformance.yml`. The gate reports CONFORMANT (0 fail,
+  0 UNGATED).
+
 ## [2.0.6] - 2026-07-14
 
 ### Changed

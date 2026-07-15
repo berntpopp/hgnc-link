@@ -33,6 +33,12 @@ _GENE_DROP_COMPACT: frozenset[str] = frozenset(
     }
 )
 
+# Internal-only provenance fields kept ONLY by `full`, so `full` is a genuine
+# superset of `standard` rather than byte-identical to it (issue #26 D3). These are
+# the HGNC record's audit/internal fields (an opaque UUID and a numeric sort key) a
+# data consumer never needs; `standard` gives the complete gene record without them.
+_GENE_FULL_ONLY: frozenset[str] = frozenset({"uuid", "location_sortable"})
+
 # Fields kept in minimal mode (everything else is dropped from the gene record).
 _GENE_KEEP_MINIMAL: frozenset[str] = frozenset(
     {
@@ -75,9 +81,16 @@ def shape_resolution(record: dict[str, Any], mode: str) -> dict[str, Any]:
 
 
 def shape_gene(record: dict[str, Any], mode: str) -> dict[str, Any]:
-    """Project a flat gene-record payload to the requested verbosity."""
-    if mode in ("standard", "full"):
+    """Project a flat gene-record payload to the requested verbosity.
+
+    ``full`` is the complete record; ``standard`` is the complete record minus the
+    internal-only provenance fields (``_GENE_FULL_ONLY``), so escalating
+    ``standard``->``full`` genuinely returns more (issue #26 D3).
+    """
+    if mode == "full":
         return record
+    if mode == "standard":
+        return {k: v for k, v in record.items() if k not in _GENE_FULL_ONLY}
     if mode == "minimal":
         return {k: v for k, v in record.items() if k in _GENE_KEEP_MINIMAL}
     # compact: drop verbose fields, and drop empty list/None values for brevity.

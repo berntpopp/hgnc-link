@@ -132,7 +132,7 @@ class ArgValidationMiddleware(Middleware):
         constraints = None
         if loc in valid and error_type not in ("missing", "missing_argument"):
             field_schema = schema.get("properties", {}).get(loc, {})
-            constraints = describe_constraints(field_schema)
+            constraints = describe_constraints(field_schema, error_type)
         suggestion = did_you_mean(loc, valid) if loc not in valid else None
         envelope = build_arg_error_envelope(
             tool_name=name,
@@ -151,4 +151,5 @@ class ArgValidationMiddleware(Middleware):
         return ToolResult(
             structured_content=envelope,
             content=[TextContent(type="text", text=json.dumps(envelope))],
+            is_error=True,
         )

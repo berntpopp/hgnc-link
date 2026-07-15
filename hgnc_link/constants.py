@@ -108,7 +108,32 @@ XREF_SOURCE_ALIASES: dict[str, str] = {
     "mgi": "mgd_id",
     "rgd_id": "rgd_id",
     "rgd": "rgd_id",
+    # MANE Select transcript (Ensembl ENST + RefSeq NM_). Indexed by the builder
+    # (mane_select is an XREF_FIELDS entry) but previously not an accepted source,
+    # so the transcript the server itself emits could not be resolved back (issue #26).
+    "mane_select": "mane_select",
+    "mane": "mane_select",
 }
+
+#: The `source` schema enum for resolve_gene_by_xref. It is EXACTLY the set of
+#: values the runtime accepts (every XREF_SOURCE_ALIASES key, canonical keys AND
+#: synonyms), so the declared enum is never NARROWER than the runtime: a
+#: schema-aware client is never told a runtime-valid source is invalid. Guarded
+#: against drift by tests/unit/test_identifiers.py.
+XREF_LOOKUP_SOURCE_ENUM: tuple[str, ...] = tuple(sorted(XREF_SOURCE_ALIASES))
+
+#: Reverse-lookup source fields whose ids legitimately carry a trailing ``.<version>``
+#: (Ensembl gene, RefSeq accession, MANE Select transcript). ONLY these are matched
+#: version-insensitively; a numeric id (entrez_id/omim_id) never is, so entrez_id
+#: '673.99' is malformed, not a match on '673' (issue #26 review).
+VERSIONED_XREF_FIELDS: frozenset[str] = frozenset(
+    {"ensembl_gene_id", "refseq_accession", "mane_select"}
+)
+
+#: Reverse-lookup source fields whose value must be a bare integer. A non-integer is
+#: a malformed id (invalid_input), never a version-stripped false match: entrez_id
+#: '673.99' is malformed, not a match on '673'.
+NUMERIC_XREF_FIELDS: frozenset[str] = frozenset({"entrez_id"})
 
 #: response_mode -> the cross-reference fields get_gene_cross_references emits when
 #: no explicit ``databases=`` filter is given. ``minimal`` keeps the two anchor ids;
@@ -153,6 +178,12 @@ XREF_FILTER_ALIASES: dict[str, str] = {
     "rgd": "rgd_id",
     "pubmed": "pubmed_id",
 }
+
+#: The `databases` item enum for get_gene_cross_references. EXACTLY the set the
+#: runtime accepts (every XREF_FILTER_ALIASES key), so a schema-aware client sees the
+#: full closed vocabulary and never rejects a runtime-valid label. Guarded against
+#: drift by tests/unit/test_capabilities.py.
+XREF_FILTER_ENUM: tuple[str, ...] = tuple(sorted(XREF_FILTER_ALIASES))
 
 #: The four HGNC locus groups (with live record counts as of 2026-06).
 LOCUS_GROUPS: tuple[str, ...] = (

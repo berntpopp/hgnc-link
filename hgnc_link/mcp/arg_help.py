@@ -86,20 +86,48 @@ def did_you_mean(unknown: str, valid: Iterable[str]) -> str | None:
     return matches[0] if matches else None
 
 
-def describe_constraints(field_schema: Mapping[str, Any]) -> tuple[list[str], str] | None:
+# pydantic value-error codes that mean "wrong TYPE", mapped to a human phrase that
+# names the expected type. A type error rendered as a range error ("must be between 1
+# and 200" for limit='ten') misleads the model into thinking its value is out of range
+# rather than the wrong type (issue #26 D5).
+_TYPE_ERROR_PHRASE: dict[str, str] = {
+    "int_parsing": "must be an integer",
+    "int_type": "must be an integer",
+    "float_parsing": "must be a number",
+    "float_type": "must be a number",
+    "bool_parsing": "must be true or false",
+    "bool_type": "must be true or false",
+    "string_type": "must be a string",
+    "list_type": "must be an array",
+}
+
+
+def describe_constraints(
+    field_schema: Mapping[str, Any], error_type: str | None = None
+) -> tuple[list[str], str] | None:
     """Surface a field's enum/range for an invalid-*value* error.
 
     Returns ``(allowed_values, human_phrase)`` for an ``enum`` or a bounded
     numeric field (digging through ``anyOf``/``allOf``/``oneOf``), or ``None`` for
     a field with no value constraint (so the caller falls back to a name error).
+
+    When ``error_type`` names a pydantic TYPE error, the human phrase names the
+    expected type ("must be an integer") instead of the range, while
+    ``allowed_values`` still carries the range/enum for guidance.
     """
+    type_phrase = _TYPE_ERROR_PHRASE.get(error_type or "")
+
+    def _finish(allowed: list[str], human: str) -> tuple[list[str], str]:
+        # A type error names the TYPE; the range/enum still rides along in allowed.
+        return allowed, type_phrase or human
+
     nodes: list[Any] = [field_schema]
     for key in ("anyOf", "allOf", "oneOf"):
         nodes.extend(field_schema.get(key, []))
     for node in nodes:
         if isinstance(node, Mapping) and node.get("enum"):
             vals = [str(v) for v in node["enum"]]
-            return vals, "must be one of: " + ", ".join(vals)
+            return _finish(vals, "must be one of: " + ", ".join(vals))
     lo: Any = None
     hi: Any = None
     for node in nodes:
@@ -110,7 +138,7 @@ def describe_constraints(field_schema: Mapping[str, Any]) -> tuple[list[str], st
     if lo is not None or hi is not None:
         lo_s = str(int(lo)) if lo is not None else "?"
         hi_s = str(int(hi)) if hi is not None else "?"
-        return [f"{lo_s}..{hi_s}"], f"must be between {lo_s} and {hi_s}"
+        return _finish([f"{lo_s}..{hi_s}"], f"must be between {lo_s} and {hi_s}")
     min_items: Any = None
     max_items: Any = None
     for node in nodes:
@@ -121,7 +149,10 @@ def describe_constraints(field_schema: Mapping[str, Any]) -> tuple[list[str], st
     if min_items is not None or max_items is not None:
         lo_s = str(int(min_items)) if min_items is not None else "0"
         hi_s = str(int(max_items)) if max_items is not None else "?"
-        return [f"{lo_s}..{hi_s} items"], f"must have between {lo_s} and {hi_s} items"
+        return _finish([f"{lo_s}..{hi_s} items"], f"must have between {lo_s} and {hi_s} items")
+    # No enum/range/items constraint, but still a plain type error: name the type.
+    if type_phrase:
+        return [], type_phrase
     return None
 
 

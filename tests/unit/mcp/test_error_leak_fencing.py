@@ -124,7 +124,7 @@ async def test_upstream_unavailable_message_is_fixed(facade_factory: Any) -> Non
     result = await mcp.call_tool("resolve_symbol", {"query": HOSTILE})
     for payload in _mirrors(result):
         assert payload["error_code"] == "upstream_unavailable"
-        assert payload["message"] == "The HGNC upstream is temporarily unavailable."
+        assert payload["message"] == "HGNC data is temporarily unavailable. Retry shortly."
         _assert_no_prose_anywhere(payload)
         _assert_no_codepoints_anywhere(payload)
 

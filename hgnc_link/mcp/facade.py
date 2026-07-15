@@ -29,6 +29,9 @@ def create_hgnc_mcp() -> FastMCP:
         version=__version__,
         instructions=HGNC_SERVER_INSTRUCTIONS,
         mask_error_details=True,
+        # Tool-Surface Budget Standard v1: no $ref appears in any input schema, so
+        # inlining is free and keeps the published tool surface compact.
+        dereference_schemas=False,
     )
 
     # Guard the FastMCP-core not-found reflection surface: core echoes the

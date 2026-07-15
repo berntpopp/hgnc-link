@@ -47,7 +47,7 @@ def default_error_next_commands(
                     cmd("search_genes", query=value),
                 ]
             return [cmd("search_genes", query=value), cmd("get_server_capabilities")]
-    if error_code == "data_unavailable":
+    if error_code == "upstream_unavailable":
         return [cmd("get_hgnc_diagnostics")]
     return [cmd("get_server_capabilities")]
 

@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import Field
 
+from hgnc_link.constants import XREF_FILTER_ENUM
 from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from hgnc_link.mcp.envelope import McpErrorContext, run_mcp_tool
 from hgnc_link.mcp.next_commands import after_get_gene, after_search, cmd
-from hgnc_link.mcp.schemas import CROSS_REFERENCES_SCHEMA, GENE_SCHEMA, SEARCH_SCHEMA
 from hgnc_link.mcp.service_adapters import get_hgnc_service
 from hgnc_link.mcp.tools._common import QueryStr, ResponseMode
 
@@ -24,7 +24,7 @@ def register_gene_tools(mcp: FastMCP) -> None:
         name="get_gene",
         title="Get Gene Record",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=GENE_SCHEMA,
+        output_schema=None,
         tags={"gene"},
         description=(
             "Return the full HGNC record for a gene, resolved from an HGNC id, "
@@ -51,7 +51,7 @@ def register_gene_tools(mcp: FastMCP) -> None:
         name="search_genes",
         title="Search Genes",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=SEARCH_SCHEMA,
+        output_schema=None,
         tags={"gene"},
         description=(
             "Free-text search over gene symbols, names, aliases, and previous "
@@ -64,7 +64,13 @@ def register_gene_tools(mcp: FastMCP) -> None:
         ),
     )
     async def search_genes(
-        query: Annotated[str, Field(description="Free-text query (symbol fragment, name, alias).")],
+        query: Annotated[
+            str,
+            Field(
+                description="Free-text query (symbol fragment, name, alias).",
+                examples=["BRCA", "kinase", "TP53"],
+            ),
+        ],
         limit: Annotated[int, Field(ge=1, le=200, description="Max hits (default 25).")] = 25,
         response_mode: ResponseMode = "compact",
     ) -> dict[str, Any]:
@@ -83,7 +89,7 @@ def register_gene_tools(mcp: FastMCP) -> None:
         name="get_gene_cross_references",
         title="Get Gene Cross-References",
         annotations=READ_ONLY_OPEN_WORLD,
-        output_schema=CROSS_REFERENCES_SCHEMA,
+        output_schema=None,
         tags={"gene", "xref"},
         description=(
             "Return external database cross-references for a gene (forward identifier "
@@ -103,7 +109,20 @@ def register_gene_tools(mcp: FastMCP) -> None:
         query: QueryStr,
         databases: Annotated[
             list[str] | None,
-            Field(description="Optional database filter, e.g. ['ensembl','uniprot','omim']."),
+            Field(
+                description=(
+                    "Optional cross-reference filter: a list of field keys or friendly "
+                    "labels (e.g. 'ncbi', 'ensembl', 'uniprot', 'refseq', 'mane', 'omim', "
+                    "'ucsc', 'vega', 'ccds', 'mgi', 'rgd', 'pubmed'). Overrides the "
+                    "response_mode tier; an unknown key is rejected with invalid_input + "
+                    "did_you_mean."
+                ),
+                examples=[["ensembl", "uniprot", "omim"], ["mane"]],
+                # Declare the item vocabulary (S4) as EXACTLY the runtime-accepted set,
+                # so the enum is never narrower than the runtime; the `str` item type
+                # keeps the service's did-you-mean on the rejection path.
+                json_schema_extra={"items": {"type": "string", "enum": list(XREF_FILTER_ENUM)}},
+            ),
         ] = None,
         response_mode: ResponseMode = "compact",
     ) -> dict[str, Any]:
