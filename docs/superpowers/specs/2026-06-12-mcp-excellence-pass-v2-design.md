@@ -1,6 +1,9 @@
 # HGNC-Link MCP — Excellence Pass v2 (design)
 
 **Date:** 2026-06-12
+
+> Historical record
+
 **Author:** MCP engineering (autonomous, goal-driven)
 **Driver:** `MCP-ASSESSMENT-2026-06-12-live.md` (independent live re-run, scored 8.5 UX / 7 tester)
 **Target:** > 9.5 / 10 on a re-run, grounded in 2026 MCP best practices.

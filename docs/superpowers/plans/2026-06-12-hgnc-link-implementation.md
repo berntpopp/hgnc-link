@@ -1,5 +1,7 @@
 # hgnc-link — Implementation Plan
 
+> Historical record
+
 Build order (each step committed atomically). Conventions mirror uniprot-link
 (MCP layer) + gencc-link (bulk pipeline) + clingen-link (HGNC parsing).
 
