@@ -2,6 +2,9 @@
 
 **Date:** 2026-06-12
 **Status:** Approved (autonomous build per `/goal`)
+
+> Historical record
+
 **Author:** Claude (Fable 5) for bernt.popp@charite.de
 
 ## 1. Purpose

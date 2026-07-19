@@ -1,5 +1,7 @@
 # HGNC-Link MCP — Excellence Pass Design (target ≥ 9.5/10)
 
+> Historical record
+
 > Driven by `MCP-ASSESSMENT.md` (external black-box LLM-consumer evaluation,
 > 2026-06-12). That assessment scored the server **8/10 (UX)** / **7.5 (tester)**,
 > gated by one critical bug and one high-severity silent-failure trap. This design

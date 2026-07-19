@@ -1,5 +1,7 @@
 # HGNC-Link MCP Excellence Implementation Plan
 
+> Historical record
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Close every `MCP-ASSESSMENT.md` finding (critical → polish) to take the server from 8/10 to ≥ 9.5/10, preserving all `AGENTS.md` invariants.
