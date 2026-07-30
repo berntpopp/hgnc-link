@@ -6,6 +6,51 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-07-30
+
+### Added
+
+- **Dependabot version updates are now configured** (`.github/dependabot.yml`).
+  This repo had never carried one. Without a config Dependabot runs *security*
+  updates only, which is why exactly one automated bump exists in the whole
+  history (the `mcp` 1.28.1 security PR, #30) and why no version update had ever
+  run for Python dependencies, pinned GitHub Actions, or the Docker base. Four
+  ecosystems are now watched weekly (Monday, Europe/Berlin, staggered): `uv` at
+  `/`, `github-actions` at `/`, `docker` and `docker-compose` at `/docker`.
+
+### Changed
+
+- **Swept the dependency drift the missing watcher hid** — 30 of 96 locked
+  packages moved. Runtime: fastapi 0.136.3→0.141.1, uvicorn 0.49.0→0.52.0,
+  mcp 1.28.1→1.29.0, fastmcp 3.4.4→3.4.5, typer 0.26.7→0.27.0,
+  websockets 16.0→17.0, certifi 2026.5.20→2026.7.22 and 18 transitives.
+  Dev: ruff 0.15.17→0.16.0, mypy 2.1.0→2.3.0, pytest 9.0.3→9.1.1,
+  coverage 7.14.1→7.15.2. Declared `pyproject` floors are unchanged — this
+  repo's convention is a permissive floor plus a major upper bound, not
+  floor == locked.
+- **The ruff rule set is pinned with `select` instead of `extend-select`.**
+  ruff 0.16 grows its implicit default from 59 to 413 rules, so `extend-select`
+  would have silently inherited ~350 unopted rules. The listed rules already
+  superset ruff's pre-0.16 default (E4/E7/E9 + F), so enforced policy is
+  unchanged; it is simply decided here rather than upstream.
+- Bumped pinned GitHub Actions: `actions/checkout` v7.0.0→v7.0.1 (and
+  v6.0.3→v7.0.1 in `container-security.yml`, the one workflow left behind),
+  `actions/setup-python` v6→v7.0.0, `astral-sh/setup-uv` v8.2.0→v9.0.0.
+- Refreshed the digest-pinned Docker base within the 3.12 line
+  (`python:3.12-slim` `423ed6ab`→`57cd7c3a`), picking up the rebuilt Debian
+  layer. The fleet's 3.14 base is deliberately *not* adopted: `requires-python`,
+  the ruff/mypy targets, the CI matrix and `container-release.json`'s image
+  allowlist all hard-code 3.12, so changing lines is a migration, not a bump.
+
+### Fixed
+
+- **`github/codeql-action` was pinned to a tag object, not a commit.**
+  `ed410739…`, commented `# v4`, is the annotated tag object for the floating
+  `v4` tag (dereferencing to v4.35.3) — a form Dependabot cannot track.
+  Repinned to the commit `f205ea1c…` `# v4.37.4`.
+- `CITATION.cff` had drifted to `2.0.6` while the package was at `2.1.0`; it now
+  tracks the released version again.
+
 ## [2.1.0] - 2026-07-15
 
 ### Changed
