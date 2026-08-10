@@ -6,6 +6,23 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.3] - 2026-08-10
+
+Consolidated Dependabot maintenance release. No API, MCP or data-contract
+behaviour change.
+
+### Security
+
+- Updated locked `cryptography` to 50.0.0, closing CVE-2026-69247 while
+  retaining the fail-closed HIGH/CRITICAL image scan.
+
+### Changed
+
+- Updated Uvicorn to 0.52.1, Typer to 0.27.1, FastMCP to 3.4.6 and Ruff to
+  the current 0.16.x release.
+- Updated both CodeQL phases together to v4.37.6 and both reusable container
+  workflows to reviewed router v0.7.4.
+
 ## [2.1.2] - 2026-07-30
 
 The Docker base moves to Python 3.14. The migration [2.1.1] deliberately
