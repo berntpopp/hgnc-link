@@ -72,9 +72,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HGNC_LINK_DATA__REFRESH_ENABLED=false \
     TMPDIR=/tmp
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

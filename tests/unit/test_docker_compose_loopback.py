@@ -30,3 +30,10 @@ def test_base_compose_binds_published_ports_to_loopback() -> None:
             "binds 0.0.0.0 and bypasses the host firewall. Production reaches it "
             "only via the router/reverse proxy."
         )
+
+
+def test_production_application_uses_a_persistent_restart_policy() -> None:
+    """The long-running application must recover from a host restart."""
+    production = (ROOT / "docker" / "docker-compose.prod.yml").read_text(encoding="utf-8")
+
+    assert "    restart: unless-stopped" in production
