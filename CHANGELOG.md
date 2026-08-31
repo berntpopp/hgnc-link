@@ -6,6 +6,12 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.4] - 2026-08-31
+
+### Changed
+
+- Pin both reusable container workflows to the authoritative router trusted-builder revision.
+
 ## [2.1.3] - 2026-08-10
 
 Consolidated Dependabot maintenance release. No API, MCP or data-contract
