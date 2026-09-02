@@ -65,6 +65,15 @@ freshness), `deployment.md` (cron/systemd/Docker), `architecture.md`, `usage.md`
   `docker/docker-compose.prod.yml`) — the shared release gate
   (`container_release.py validate-compose`) forbids it there.
 - Both rules are enforced by `tests/unit/test_deploy_overlay_user.py`.
+- `container-release.json` declares `service.deployed_compose_files:
+  ["docker/docker-compose.npm.yml"]` — the exact file the controller deploys.
+  Both reusable-workflow pins (`.github/workflows/container-ci.yml`,
+  `.github/workflows/container-release.yml`) must track the same
+  `genefoundry-router` revision: the shared `_container-release.yml` workflow
+  runs `container_release.py validate-deployed-overlay` against the declared
+  file before every release, and `_container-ci.yml` loads the same
+  `ReleaseConfig` schema from its own pin to validate this JSON, so an older
+  pin there rejects new fields.
 - **Release checklist** (fleet controller pulls a tagged, attested image — it
   never builds from source): bump `pyproject.toml`, `uv lock`, add a
   `CHANGELOG.md` heading `## [x.y.z] - YYYY-MM-DD`, bump `CITATION.cff`
