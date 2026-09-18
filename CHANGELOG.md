@@ -6,6 +6,17 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.7] - 2026-09-18
+
+Consolidated Dependabot maintenance release.
+
+### Changed
+
+- Updated dependencies: `pydantic` to 2.13.5, `typer` to 0.27.2, `ruff` to 0.16.8, `mypy` to 2.3.1.
+- Updated GitHub Actions: `setup-uv` to v10.1.0 and `codeql-action` to v4.38.0.
+- Updated reusable workflow pin to `genefoundry-router` v0.9.1.
+- Configured Dependabot groups for `uv` and `github-actions` ecosystems.
+
 ## [2.1.6] - 2026-09-02
 
 ### Changed
