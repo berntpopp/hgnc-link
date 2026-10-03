@@ -6,6 +6,12 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.8] - 2026-10-03
+
+- Update PyJWT to 2.15.0 and the open grouped Python dependency targets.
+- Refresh the pinned Python 3.14 base image, GitHub Actions, and router v0.9.3 reusable container workflows.
+
+
 ## [2.1.7] - 2026-09-18
 
 Consolidated Dependabot maintenance release.
