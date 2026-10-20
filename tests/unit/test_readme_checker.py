@@ -27,6 +27,7 @@ def test_repo_slug_uses_origin_when_worktree_directory_has_a_different_name(
 
     class Result:
         stdout = "https://github.com/berntpopp/hgnc-link.git\n"
+        returncode = 0
 
     monkeypatch.setattr(checker, "ROOT", worktree)
     monkeypatch.setattr(checker.subprocess, "run", lambda *args, **kwargs: Result())
