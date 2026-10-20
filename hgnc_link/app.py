@@ -45,7 +45,7 @@ def _validate_cors(origins: list[str], allow_credentials: bool) -> None:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     """Bootstrap the HGNC index and (optionally) start the refresh scheduler."""
     logger = configure_logging()
     logger.info("hgnc-link starting", host=settings.host, port=settings.port)

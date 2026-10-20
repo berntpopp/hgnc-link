@@ -8,6 +8,10 @@ permissions:
 concurrency:
   group: conformance-${{ github.ref }}
   cancel-in-progress: true
+
+env:
+  UV_PYTHON: "3.14"
+
 jobs:
   conformance:
     runs-on: ubuntu-latest
