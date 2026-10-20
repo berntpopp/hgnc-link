@@ -6,6 +6,18 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.9] - 2026-10-20
+
+### Security
+
+- Update `mcp` to 1.30.0 to fix the open Dependabot advisory on `mcp` (fix version 1.30.0).
+
+### Changed
+
+- Updated Python dependencies: `ast-serialize` 0.13.1, `fastapi` 0.143.2, `librt` 0.16.0, `mypy` 2.4.0, `orjson` 3.13.0, `pydantic` 2.14.1, `pydantic-core` 2.50.1, `pydantic-settings` 2.16.0, `ruff` 0.17.1, `typer` 0.27.3, `typing-inspection` 0.4.4.
+- Updated GitHub Actions: `setup-uv` to v10.3.0, `upload-artifact` to v7.0.2, `codeql-action` to v4.38.3.
+- Updated reusable workflow pin to `genefoundry-router` v0.10.4.
+
 ## [2.1.8] - 2026-10-03
 
 - Update PyJWT to 2.15.0 and the open grouped Python dependency targets.
