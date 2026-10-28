@@ -6,6 +6,14 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.12] - 2026-10-28
+
+### Fixed
+
+- Re-release of 2.1.11: pin the router reusable workflows to genefoundry-router v0.10.10, whose
+  refreshed control ledger lets the container release pass "Enforce fleet release controls" (2.1.11 was
+  tagged but never published).
+
 ## [2.1.11] - 2026-10-28
 
 ### Security
