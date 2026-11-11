@@ -25,7 +25,11 @@
       "home/app/web/hgnc_link/data/schema.sql",
       "opt/venv/lib/python3.14/site-packages/hgnc_link/data/__init__.py",
       "opt/venv/lib/python3.14/site-packages/hgnc_link/data/repository.py",
-      "opt/venv/lib/python3.14/site-packages/hgnc_link/data/schema.sql"
+      "opt/venv/lib/python3.14/site-packages/hgnc_link/data/schema.sql",
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/__init__.py",
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdataabc.py",
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdatacode.py",
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdataerror.py"
     ],
     "egress_allowlist": [
       "storage.googleapis.com",
