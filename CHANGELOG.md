@@ -6,6 +6,13 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.13] - 2026-11-11
+
+### Fixed
+
+- Fleet dependency + security sweep: joserfc 1.8.0 (GHSA high), fastmcp / fastmcp-slim 3.4.11 (>=3.4.10),
+  opentelemetry-api 1.45.2 (>=1.45.1); setup-python 7.1.0, setup-uv 10.3.3, codeql-action 4.39.1.
+
 ## [2.1.12] - 2026-10-28
 
 ### Fixed
