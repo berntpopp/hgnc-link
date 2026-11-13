@@ -575,7 +575,7 @@ wheels = [
 
 [[package]]
 name = "hgnc-link"
-version = "2.1.13"
+version = "2.1.14"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
