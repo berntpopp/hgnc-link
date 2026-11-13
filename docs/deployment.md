@@ -1,10 +1,13 @@
-# Deployment & data refresh (cron)
+# Deployment & data refresh
 
 `hgnc-link` serves from a **local SQLite index** built from the HGNC bulk dumps.
-For speed there are no per-request REST calls — instead the index is kept fresh
-by a **cron job** that runs the `hgnc-link-data refresh` CLI. HGNC publishes new
-data Tuesdays and Fridays; a daily refresh is cheap because an unchanged dump
-returns `304 Not Modified` (no re-download, no rebuild).
+**Containers** (the fleet deploy) serve one pinned, digest-verified **data
+release** restored at startup and never download from HGNC (see "Docker" below
+and [Data](data.md#data-releases-external-reference)). The cron/systemd
+`hgnc-link-data refresh` options below are for a **source checkout** (bare VM /
+local) only. HGNC publishes new data Tuesdays and Fridays; a daily refresh is
+cheap because an unchanged dump returns `304 Not Modified` (no re-download, no
+rebuild).
 
 ## The refresh command
 
@@ -67,23 +70,36 @@ sudo systemctl enable --now hgnc-link-refresh.timer
 systemctl list-timers hgnc-link-refresh.timer
 ```
 
-## Option C — Docker
+## Docker (pinned data release)
 
-The container entrypoint builds the index on first start; the named volume
-persists it across restarts. Refresh the running container from host cron:
+- A one-shot **`hgnc-data-init`** service runs `hgnc-link-data materialize-data`
+  before the server starts. It downloads the image's pinned `data-hgnc-*` GitHub
+  release asset of this repository (`github.com` /
+  `release-assets.githubusercontent.com` only), verifies the compressed and
+  expanded SHA-256 and the schema, writes `/data/<digest>/hgnc.sqlite`, and
+  atomically points `/data/current` at it. A restart re-verifies the existing
+  snapshot without downloading.
+- The **server mounts the volume read-only** and serves
+  `/data/current/hgnc.sqlite`; `/health` reports `release_identity.data_identity`
+  (`expected` from the pin, `actual` re-proved from the served bytes). No in-app
+  refresh, no upstream download, no `refresh` service.
 
-```cron
-17 3 * * *  docker compose -f /opt/hgnc-link/docker/docker-compose.yml run --rm refresh
-```
+### Operator steps (fleet host)
 
-(The `refresh` service in `docker-compose.yml` is under the `tools` profile, so
-it never starts with `docker compose up` — only when invoked explicitly.)
-
-## In-process scheduler (alternative to cron)
-
-If you cannot use cron, set `HGNC_LINK_DATA__REFRESH_ENABLED=true` and the server
-runs an internal daily conditional refresh (unified/http transports only). It is
-**off by default** because cron is the recommended, observable mechanism.
+1. Pull the released image by digest and set `HGNC_LINK_IMAGE` as before.
+2. `docker compose -f docker/docker-compose.npm.yml --env-file .env.docker up -d`.
+   Compose starts `hgnc-data-init` first (outbound HTTPS to `github.com` and
+   `release-assets.githubusercontent.com`), waits for exit `0`, then starts the
+   server. No manual staging is required.
+3. Verify: `docker compose -f docker/docker-compose.npm.yml logs hgnc-data-init`
+   shows `Materialized HGNC data release data-hgnc-…`, and `/health`
+   `release_identity` shows `expected == actual` with the tag/digest from
+   `container-release.json`.
+4. Optional cleanup: the old files in the existing `hgnc-data` volume
+   (`hgnc.sqlite`, the dumps, `download_cache.json`, `.build.lock`) are no longer
+   read and may be deleted; the restore writes only `<digest>/` and `current`.
+5. Remove any host cron line that ran `docker compose ... run --rm refresh`; that
+   service no longer exists.
 
 ## Fleet deploy contract (strato_v6_docker_npm)
 

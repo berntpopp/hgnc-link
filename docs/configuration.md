@@ -31,18 +31,35 @@ The bulk downloads are built into a SQLite index — see [Data](data.md).
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `HGNC_LINK_DATA__DATA_DIR` | `./data` | Holds the built index and the download cache. |
-| `HGNC_LINK_DATA__DB_FILENAME` | `hgnc.sqlite` | Index filename within `DATA_DIR`. |
+| `HGNC_LINK_DATA__DB_FILENAME` | `hgnc.sqlite` (image: `current/hgnc.sqlite`) | Index filename within `DATA_DIR`. |
 | `HGNC_LINK_DATA__COMPLETE_SET_URL` | HGNC GCS bucket | `hgnc_complete_set.json` dump URL. |
 | `HGNC_LINK_DATA__WITHDRAWN_URL` | HGNC GCS bucket | `withdrawn.txt` dump URL. |
 | `HGNC_LINK_DATA__DOWNLOAD_TIMEOUT` | `180` | HTTP timeout (s) for a bulk download. |
 | `HGNC_LINK_DATA__MAX_DOWNLOAD_BYTES` | `134217728` (128 MiB) | **Download-size cap.** The transfer aborts past it; the dumps measured under 64 MiB on 2026-07-10. Raise only for a larger approved HGNC export. |
 | `HGNC_LINK_DATA__MAX_DOWNLOAD_SECONDS` | `900.0` | **Download-time cap.** Total transfer budget (s); measured under 450 s on 2026-07-10. |
 | `HGNC_LINK_DATA__USER_AGENT` | `hgnc-link/<version> (+<repo URL>)` | `User-Agent` sent to genenames.org / the GCS bucket. |
-| `HGNC_LINK_DATA__AUTO_BOOTSTRAP` | `true` | Build the index on first use if it is absent. |
+| `HGNC_LINK_DATA__AUTO_BOOTSTRAP` | `true` (image: `false`) | Build the index on first use if it is absent (source checkout only). |
 | `HGNC_LINK_DATA__REFRESH_ENABLED` | `false` | In-process refresh scheduler (`unified`/`http` only). **Off by default — cron owns refresh** ([Deployment](deployment.md)). |
 | `HGNC_LINK_DATA__REFRESH_INTERVAL_HOURS` | `24.0` | Interval for the in-process loop when enabled (1–720). |
 | `HGNC_LINK_DATA__REFRESH_JITTER_SECONDS` | `300` | Random jitter per refresh, to avoid thundering herds. |
 | `HGNC_LINK_DATA__BUILD_LOCK_TIMEOUT` | `600` | Cross-process build-lock timeout (s), 1–3600. |
+
+## Pinned data release (init sidecar)
+
+`hgnc-link-data materialize-data` (the `hgnc-data-init` service) restores exactly this
+release; `/health` reports it as `release_identity.data_identity`. Defaults are the
+reviewed pin in `hgnc_link/config.py` (kept equal to `container-release.json`); override
+only for a reviewed re-pin ([Data](data.md#data-releases-external-reference)).
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `HGNC_LINK_IMMUTABLE_DATA__REFERENCE_ROOT` | `/data` | Volume root holding `<digest>/hgnc.sqlite` and the `current` link. |
+| `HGNC_LINK_IMMUTABLE_DATA__RELEASE_TAG` | pinned `data-hgnc-<sha16>` | Published data release tag of this repo. |
+| `HGNC_LINK_IMMUTABLE_DATA__BUNDLE_URL` | that release's `hgnc.sqlite.gz` | HTTPS `github.com` release-asset URL under the tag. |
+| `HGNC_LINK_IMMUTABLE_DATA__COMPRESSED_SHA256` | pinned | SHA-256 of `hgnc.sqlite.gz` (the release digest). |
+| `HGNC_LINK_IMMUTABLE_DATA__EXPANDED_SHA256` | pinned | SHA-256 of the expanded `hgnc.sqlite`. |
+| `HGNC_LINK_IMMUTABLE_DATA__MAX_COMPRESSED_BYTES` | `134217728` | Download size cap. |
+| `HGNC_LINK_IMMUTABLE_DATA__MAX_EXPANDED_BYTES` | `1073741824` | Decompressed size cap. |
 
 ## Live REST client (`rest.genenames.org`)
 

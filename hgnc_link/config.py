@@ -7,10 +7,11 @@ models use ``__``, e.g. ``HGNC_LINK_DATA__DB_FILENAME=hgnc.sqlite`` or
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from hgnc_link import __version__
@@ -25,6 +26,49 @@ _GCS = "https://storage.googleapis.com/public-download-files/hgnc"
 DEFAULT_COMPLETE_SET_URL = f"{_GCS}/json/json/hgnc_complete_set.json"
 DEFAULT_WITHDRAWN_URL = f"{_GCS}/tsv/tsv/withdrawn.txt"
 DEFAULT_REST_BASE_URL = "https://rest.genenames.org"
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_MUTABLE_TAGS = frozenset({"latest", "main", "master", "head", "stable", "current"})
+
+# The one reviewed data release the init sidecar restores (a published
+# `data-hgnc-*` release of this repository). Change it only in a reviewed PR,
+# together with container-release.json (tests/test_data_release_identity.py).
+DATA_RELEASE_TAG = "data-hgnc-74d1fd0b58288e57"
+DATA_COMPRESSED_SHA256 = "70de24651ba6133cca4c3e1489bca0accd8ba119560ce7a44895dc594abae6e8"
+DATA_EXPANDED_SHA256 = "74d1fd0b58288e57abd6e2613f6b5df9ab5e2fcec461d21ce501ea138dbdea4c"
+
+
+class ImmutableDataRequirement(BaseModel):
+    """The exact published HGNC data release that the init sidecar may materialize."""
+
+    model_config = ConfigDict(frozen=True)
+
+    reference_root: Path = Path("/data")
+    release_tag: str = DATA_RELEASE_TAG
+    bundle_url: AnyHttpUrl = AnyHttpUrl(
+        "https://github.com/berntpopp/hgnc-link/releases/download/"
+        f"{DATA_RELEASE_TAG}/hgnc.sqlite.gz"
+    )
+    compressed_sha256: str = DATA_COMPRESSED_SHA256
+    expanded_sha256: str = DATA_EXPANDED_SHA256
+    max_compressed_bytes: int = Field(default=128 * 1024 * 1024, gt=0)
+    max_expanded_bytes: int = Field(default=1024 * 1024 * 1024, gt=0)
+
+    @model_validator(mode="after")
+    def _immutable_pin(self) -> ImmutableDataRequirement:
+        if not self.release_tag or self.release_tag.lower() in _MUTABLE_TAGS:
+            raise ValueError("immutable data release_tag must not be mutable")
+        if not (
+            _SHA256_RE.fullmatch(self.compressed_sha256)
+            and _SHA256_RE.fullmatch(self.expanded_sha256)
+        ):
+            raise ValueError("immutable data digests must be lowercase SHA-256")
+        if self.bundle_url.scheme != "https" or self.bundle_url.host != "github.com":
+            raise ValueError("immutable data bundle_url must be an HTTPS GitHub release asset")
+        if not (self.bundle_url.path or "").endswith(
+            f"/download/{self.release_tag}/hgnc.sqlite.gz"
+        ):
+            raise ValueError("immutable data bundle_url must name the asset under release_tag")
+        return self
 
 
 class HgncDataConfig(BaseModel):
@@ -220,6 +264,10 @@ class ServerSettings(BaseSettings):
     api: HgncApiConfig = Field(
         default_factory=HgncApiConfig,
         description="Live REST fallback configuration.",
+    )
+    immutable_data: ImmutableDataRequirement = Field(
+        default_factory=ImmutableDataRequirement,
+        description="Exact published data release restored only by the init sidecar.",
     )
 
     @field_validator("mcp_path")

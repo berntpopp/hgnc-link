@@ -7,22 +7,13 @@ make docker-logs        # follow logs
 make docker-down        # stop
 ```
 
-The entrypoint downloads the HGNC dumps and builds the local SQLite index
-(~33 MB download → ~73 MB index, a few seconds) before the server starts. The
-index is persisted in the `hgnc-data` named volume across restarts.
-
-## Refresh
-
-The in-app scheduler is **off**; refresh is owned by cron. To refresh the
-running stack's data, run the one-shot `refresh` service (under the `tools`
-profile) from host cron:
-
-```cron
-17 3 * * *  docker compose -f /opt/hgnc-link/docker/docker-compose.yml run --rm refresh
-```
-
-See [`../docs/deployment.md`](../docs/deployment.md) for crontab / systemd timer
-options on bare-metal installs.
+The one-shot `hgnc-data-init` service restores the image's pinned, digest-verified
+`data-hgnc-*` data release (a GitHub release of this repository) into the
+`hgnc-data` volume and exits; the server then mounts that volume **read-only**.
+Nothing is downloaded from HGNC at boot and there is no refresh service: a new
+data release arrives with a reviewed re-pin and a new image. See
+[`../docs/data.md`](../docs/data.md#data-releases-external-reference) and
+[`../docs/deployment.md`](../docs/deployment.md#operator-steps-fleet-host).
 
 ## Ports
 
