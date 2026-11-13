@@ -6,8 +6,11 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.2.2] - 2026-11-13
+
 ### Changed
 
+- Release built with genefoundry-router v0.10.17 reusable workflows (recovery/attestation fixes).
 - CI: re-pin the reusable container CI/release workflows to genefoundry-router v0.10.17 (`2cd86e3`), picking up the release recovery-path (v0.10.14), validate-config evidence-predicate (v0.10.16), and recovery attestation / GHCR tag-race / partial-rerun fixes (v0.10.17).
 
 ## [2.2.1] - 2026-11-13
