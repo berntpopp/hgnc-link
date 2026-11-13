@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "dataset": "HGNC complete set (hgnc_complete_set.json) and withdrawn list (withdrawn.txt) and the hgnc-link SQLite index derived from them",
+  "redistribution_allowed": true,
+  "reviewer": "Repository owner (explicit operator decision recorded 2026-11-13, genefoundry-router#63 option A)",
+  "reviewed_at": "2026-11-13T00:00:00Z",
+  "interpretation": "This is the repository owner's determination that a derived research-use snapshot may be published as a GitHub release asset. It is not an approval, endorsement, or review by the HGNC, and it is not a legal conclusion.",
+  "license": {
+    "spdx": "CC0-1.0",
+    "name": "Creative Commons Public Domain (CC0) License",
+    "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "terms_url": "https://www.genenames.org/about/license/",
+    "terms_retrieved": "2026-11-13",
+    "quote": "The HUGO Gene Nomenclature Committee (HGNC) wants to ensure that our information is accessible to the public and free to use, for this reason all data is released under the Creative Commons Public Domain (CC0) License. This means that any form of reuse of the content is permitted. [...] Although stating the source is not mandatory, the HGNC recommends attribution (e.g. in publications, services or products) for any of its online services, databases or software."
+  },
+  "attribution": "Gene nomenclature data from the HUGO Gene Nomenclature Committee (HGNC), www.genenames.org, released under CC0. Recommended citation: Seal RL, Braschi B, Gray K, McClay J, Tweedie S, Bruford EA. Genenames.org: the HGNC and PGNC resources in 2026. Nucleic Acids Research (Database issue). HGNC (RRID:SCR_002827).",
+  "disclaimer": "Research use only; not clinical decision support."
+}

@@ -1,5 +1,6 @@
 -- hgnc-link local index schema (built from the HGNC bulk dumps).
-PRAGMA journal_mode = WAL;
+-- Rollback journal, not WAL: the released snapshot is served from a read-only mount.
+PRAGMA journal_mode = DELETE;
 PRAGMA foreign_keys = OFF;
 
 -- One row per approved HGNC record. List fields are stored as JSON text.
