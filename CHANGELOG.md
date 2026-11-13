@@ -6,6 +6,15 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-11-13
+
+### Fixed
+
+- `/health` no longer re-hashes the whole served SQLite on every probe. The runtime-v1
+  data identity is verified once and cached, keyed on the file's path, inode, size,
+  mtime and the pinned digest; any stat change re-verifies (same approach as mgi-link).
+  Repeated `/health` drops from ~35-40 ms to ~2 ms locally.
+
 ## [2.2.0] - 2026-11-13
 
 ### Changed
