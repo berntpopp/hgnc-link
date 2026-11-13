@@ -6,6 +6,12 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.1.14] - 2026-11-13
+
+### Changed
+
+- CI: re-pin the reusable container CI/release workflows to genefoundry-router v0.10.14 (`bda1aca`), which fixes the release re-run/recovery path (genefoundry-router #277).
+
 ## [2.1.13] - 2026-11-11
 
 ### Fixed
