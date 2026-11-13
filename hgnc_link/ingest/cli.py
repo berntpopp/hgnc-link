@@ -7,12 +7,16 @@ rebuild — the cron job), and ``status`` (print provenance of the existing DB).
 
 from __future__ import annotations
 
+import json
+from email.utils import parsedate_to_datetime
+from pathlib import Path
+
 import typer
 
 from hgnc_link.config import get_data_config
 from hgnc_link.exceptions import DownloadError
 from hgnc_link.ingest.builder import BuildMeta, build_database, read_meta, rebuild
-from hgnc_link.ingest.downloader import download_bulk
+from hgnc_link.ingest.downloader import COMPLETE_SET_FILENAME, WITHDRAWN_FILENAME, download_bulk
 
 app = typer.Typer(
     add_completion=False,
@@ -36,7 +40,13 @@ def _print_summary(meta: BuildMeta, *, header: str) -> None:
 
 
 @app.command()
-def build() -> None:
+def build(
+    reproducible: bool = typer.Option(
+        False,
+        "--reproducible",
+        help="Pin build_utc to the complete set's Last-Modified so the file is byte-reproducible.",
+    ),
+) -> None:
     """Force a download and full rebuild of the database."""
     config = get_data_config()
     try:
@@ -47,14 +57,44 @@ def build() -> None:
     if download.complete_set.path is None:
         print("ERROR: download produced no complete-set file.")
         raise typer.Exit(code=1)
+    build_utc = None
+    if reproducible:
+        if not download.complete_set.last_modified or download.withdrawn.path is None:
+            print("ERROR: --reproducible needs both dumps and the Last-Modified header.")
+            raise typer.Exit(code=1)
+        build_utc = parsedate_to_datetime(download.complete_set.last_modified).isoformat()
     meta = build_database(
         config,
         complete_set_path=download.complete_set.path,
         withdrawn_path=download.withdrawn.path,
         etag=download.complete_set.etag,
         last_modified=download.complete_set.last_modified,
+        build_utc=build_utc,
     )
     _print_summary(meta, header="Built HGNC database:")
+
+
+@app.command()
+def package(
+    output: Path = typer.Option(..., help="New directory for the release assets."),
+    revision: str = typer.Option(..., help="Full commit SHA of the transformation code."),
+    authorization: Path = typer.Option(
+        Path("release/data-authorization.json"), help="Owner redistribution authorization."
+    ),
+) -> None:
+    """Package the reproducibly built database as data-release assets; print the manifest."""
+    from hgnc_link.ingest.release import package_release
+
+    config = get_data_config()
+    manifest = package_release(
+        config.db_path,
+        complete_set=config.data_dir / COMPLETE_SET_FILENAME,
+        withdrawn=config.data_dir / WITHDRAWN_FILENAME,
+        authorization=authorization,
+        output=output,
+        revision=revision,
+    )
+    print(json.dumps(manifest, indent=2, sort_keys=True))
 
 
 @app.command()

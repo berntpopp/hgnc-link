@@ -6,6 +6,22 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Data-release pipeline (genefoundry-router#63 option A): `hgnc-link-data build --reproducible`
+  pins `build_utc` to the complete set's `Last-Modified` and omits the build duration, so the
+  same dumps always build to the same SQLite bytes; `hgnc-link-data package` writes the
+  content-addressed `data-hgnc-<sha16>` assets (gzip bundle, manifest, owner authorization,
+  `SHA256SUMS`). `.github/workflows/data-release.yml` downloads each dump once per weekly run
+  and publishes through the owner-reviewed `data-release` environment.
+- `release/data-authorization.json`: the repository owner's 2026-11-13 redistribution decision
+  for the CC0 HGNC dumps, with the HGNC licence quote and the recommended attribution.
+
+### Changed
+
+- The SQLite snapshot uses a rollback journal instead of WAL so it can be served from a
+  read-only mount.
+
 ## [2.1.14] - 2026-11-13
 
 ### Changed
