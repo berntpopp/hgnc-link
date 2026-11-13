@@ -15,10 +15,26 @@
     "startup_timeout_seconds": 240,
     "deployed_compose_files": [
       "docker/docker-compose.npm.yml"
+    ],
+    "auxiliary": [
+      {
+        "name": "hgnc-data-init",
+        "role": "init",
+        "egress": "approved-networks",
+        "writable_targets": [
+          "/data",
+          "/tmp"
+        ]
+      }
     ]
   },
   "data": {
-    "mode": "upstream-live",
+    "mode": "external-reference",
+    "release_tag": "data-hgnc-74d1fd0b58288e57",
+    "digest": "sha256:70de24651ba6133cca4c3e1489bca0accd8ba119560ce7a44895dc594abae6e8",
+    "schema_compatibility": [
+      "1"
+    ],
     "image_allowlist": [
       "home/app/web/hgnc_link/data/__init__.py",
       "home/app/web/hgnc_link/data/repository.py",
@@ -30,25 +46,13 @@
       "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdataabc.py",
       "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdatacode.py",
       "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdataerror.py"
-    ],
-    "egress_allowlist": [
-      "storage.googleapis.com",
-      "rest.genenames.org"
-    ],
-    "release_tag": "observed-2026.07.13",
-    "digest": "sha256:3a106439d733bdb57353ccdc587de943b0fcb269d6979a97170954b596881fdc",
-    "reproducible_rollback": false
+    ]
   },
-  "data_identity_contract": "unadopted",
-  "runtime_cache": {
-    "path": "/data",
-    "eviction": "operator-managed persistent SQLite cache rebuilt from the declared upstream live sources",
-    "deletable_without_authoritative_data_loss": true
-  },
+  "data_identity_contract": "runtime-v1",
   "definitions": {
     "contract": "data-bound"
   },
   "smoke": {
-    "profile": "prepared-live-fixture"
+    "profile": "immutable-bundle"
   }
 }

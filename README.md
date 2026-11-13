@@ -55,9 +55,10 @@ make mcp-serve        # ...or a stdio MCP server, for Claude Desktop
 claude mcp add --transport http hgnc-link --scope user http://127.0.0.1:8000/mcp
 ```
 
-For stdio see [`claude-desktop-config.json`](claude-desktop-config.json). Keep the index
-fresh with `make data-refresh` from cron — it is conditional, so an unchanged dump costs
-one `304` and no rebuild ([Deployment](docs/deployment.md)). Serving over HTTP behind a
+For stdio see [`claude-desktop-config.json`](claude-desktop-config.json). Keep a local
+index fresh with `make data-refresh` from cron — it is conditional, so an unchanged dump
+costs one `304` and no rebuild; containers instead serve a pinned data release
+([Deployment](docs/deployment.md)). Serving over HTTP behind a
 proxy requires adding the public hostname to the exact Host allowlist — read
 [Configuration](docs/configuration.md) first.
 
@@ -89,9 +90,10 @@ success **and** on error — and honours `response_mode ∈ {minimal, compact, s
 - **Source** — the HGNC bulk downloads (`hgnc_complete_set.json` + `withdrawn.txt`) from
   [genenames.org](https://www.genenames.org/), built into a local SQLite index. Queries are
   served from that index; there are no per-request REST round-trips.
-- **Refresh** — HGNC publishes Tuesdays and Fridays. `hgnc-link-data refresh` is the cron
-  entry point and is conditional (an unchanged dump returns `304`, so no rebuild); the
-  in-app scheduler is off by default. See [Data](docs/data.md).
+- **Releases** — a weekly workflow builds the dumps reproducibly into a content-addressed
+  `data-hgnc-<sha16>` GitHub release (owner-reviewed); containers restore the release
+  pinned in the image and never contact HGNC, and `/health` reports the served release
+  identity. A source checkout refreshes with `hgnc-link-data refresh`. See [Data](docs/data.md).
 - **Licence** — HGNC data is released with **no usage restrictions** (effectively public
   domain / CC0). Attribution is requested but not required.
 - **Citation** — Seal RL, Braschi B, Gray K, Jones TEM, Tweedie S, Haim-Vilmovsky L,

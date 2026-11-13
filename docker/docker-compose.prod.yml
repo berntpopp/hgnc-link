@@ -4,6 +4,15 @@
 #   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
 
 services:
+  hgnc-data-init:
+    build: !reset null
+    image: ${HGNC_LINK_IMAGE:?Set HGNC_LINK_IMAGE to ghcr.io/berntpopp/hgnc-link@sha256:<digest>}
+    pull_policy: missing
+    volumes: !override
+      - hgnc-data:/data
+    networks: !override
+      - default
+
   hgnc-link:
     build: !reset null
     image: ${HGNC_LINK_IMAGE:?Set HGNC_LINK_IMAGE to ghcr.io/berntpopp/hgnc-link@sha256:<digest>}
@@ -23,10 +32,11 @@ services:
       HGNC_LINK_LOG_FORMAT: json
       HGNC_LINK_ALLOWED_HOSTS: '["localhost","127.0.0.1","::1","hgnc-link.genefoundry.org"]'
       HGNC_LINK_DATA__DATA_DIR: /data
-      HGNC_LINK_DATA__AUTO_BOOTSTRAP: "true"
+      HGNC_LINK_DATA__DB_FILENAME: current/hgnc.sqlite
+      HGNC_LINK_DATA__AUTO_BOOTSTRAP: "false"
       HGNC_LINK_DATA__REFRESH_ENABLED: "false"
     volumes: !override
-      - hgnc-data:/data
+      - hgnc-data:/data:ro
     read_only: true
     tmpfs: !override
       - /tmp:rw,noexec,nosuid,size=256m,mode=1777
@@ -58,8 +68,6 @@ services:
         labels: "service=hgnc-link,environment=production"
     networks: !override
       - default
-
-  refresh: !reset null
 
 volumes: !override
   hgnc-data:

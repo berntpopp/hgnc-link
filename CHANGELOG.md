@@ -6,6 +6,24 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-13
+
+### Changed
+
+- **Container data mode `upstream-live` -> `external-reference`** (genefoundry-router#63
+  option A). The container no longer downloads the HGNC dumps at boot: a one-shot
+  `hgnc-data-init` service runs the new `hgnc-link-data materialize-data`, which restores the
+  pinned data release `data-hgnc-74d1fd0b58288e57` (HGNC complete set Last-Modified
+  2026-11-10, 45,387 genes) from this repository's GitHub releases, verifies the
+  `hgnc.sqlite.gz` and expanded SQLite SHA-256 and the schema, and atomically selects
+  `/data/current`. The server mounts the volume read-only
+  (`HGNC_LINK_DATA__DB_FILENAME=current/hgnc.sqlite`); the image now uses `CMD python server.py`.
+- `/health` adds `release_identity.data_identity` (`expected` from the pin, `actual` re-proved
+  from the served bytes); `container-release.json` adopts `data_identity_contract: runtime-v1`
+  with the `immutable-bundle` smoke profile, so every release proves the data it serves.
+- The SQLite snapshot uses a rollback journal instead of WAL so it can be served from a
+  read-only mount.
+
 ### Added
 
 - Data-release pipeline (genefoundry-router#63 option A): `hgnc-link-data build --reproducible`
@@ -17,10 +35,11 @@ All notable changes to hgnc-link are documented here. The format follows
 - `release/data-authorization.json`: the repository owner's 2026-11-13 redistribution decision
   for the CC0 HGNC dumps, with the HGNC licence quote and the recommended attribution.
 
-### Changed
+### Removed
 
-- The SQLite snapshot uses a rollback journal instead of WAL so it can be served from a
-  read-only mount.
+- `docker/entrypoint.sh` (boot-time `hgnc-link-data refresh`) and the Compose `refresh`
+  tools-profile service. `make data` / `make data-refresh` and host cron remain for a source
+  checkout.
 
 ## [2.1.14] - 2026-11-13
 

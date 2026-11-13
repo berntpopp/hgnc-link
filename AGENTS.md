@@ -89,8 +89,13 @@ freshness), `deployment.md` (cron/systemd/Docker), `architecture.md`, `usage.md`
 - The local SQLite index is built from the HGNC bulk dumps by `ingest/`. The
   schema is `data/schema.sql`; bump `constants.SCHEMA_VERSION` on incompatible
   changes. Builds are atomic (`os.replace`) under a `fcntl` lock.
-- Refresh is **cron-driven** (`hgnc-link-data refresh`); the in-app scheduler is
-  off by default. See `docs/deployment.md`.
+- Containers are `external-reference` (genefoundry-router#63 option A): the image
+  restores the pinned `data-hgnc-*` release (`hgnc_link/config.py` `DATA_*` ==
+  `container-release.json` `data`; bump `constants.SCHEMA_VERSION` means a new data
+  release + re-pin). Re-pin only in a reviewed PR after the owner-gated
+  `data-release` workflow published it; never add `main` to the `release`
+  environment. A source checkout refreshes with `hgnc-link-data refresh` (cron).
+  See `docs/data.md` and `docs/deployment.md`.
 - Don't add per-request REST calls to the hot path — query the local index.
 
 ## Testing
