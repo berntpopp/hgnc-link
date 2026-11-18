@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ from hgnc_link.services.hgnc_service import HgncService
 FIXTURES_DIR = Path(__file__).resolve().parent
 GENES_FIXTURE = FIXTURES_DIR / "fixtures_genes.json"
 WITHDRAWN_FIXTURE = FIXTURES_DIR / "fixtures_withdrawn.txt"
+GENE_INFO_FIXTURE = FIXTURES_DIR / "fixtures_gene_info.tsv"
 
 
 def _structured(result: Any) -> dict[str, Any]:
@@ -37,12 +39,16 @@ def built_db(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """Build a small HGNC index from the real fixtures once per session."""
     data_dir = tmp_path_factory.mktemp("hgnc_data")
     config = HgncDataConfig(data_dir=data_dir, db_filename="hgnc.sqlite")
+    gene_info = data_dir / "Homo_sapiens.gene_info.gz"
+    gene_info.write_bytes(gzip.compress(GENE_INFO_FIXTURE.read_bytes(), mtime=0))
     build_database(
         config,
         complete_set_path=GENES_FIXTURE,
         withdrawn_path=WITHDRAWN_FIXTURE,
         etag='"fixture-etag"',
         last_modified="Fri, 12 Jun 2026 13:01:53 GMT",
+        ncbi_gene_info_path=gene_info,
+        ncbi_last_modified="Wed, 18 Nov 2026 11:15:48 GMT",
     )
     return config.db_path
 

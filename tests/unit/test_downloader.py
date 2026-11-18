@@ -118,11 +118,32 @@ def test_download_bulk_returns_both(tmp_path: Path) -> None:
         data_dir=tmp_path,
         complete_set_url=_URL,
         withdrawn_url="https://example.test/withdrawn.txt",
+        ncbi_gene_info_url="https://example.test/gene_info.gz",
     )
     respx.get(_URL).mock(return_value=httpx.Response(200, content=b"{}", headers={"ETag": '"c"'}))
     respx.get("https://example.test/withdrawn.txt").mock(
         return_value=httpx.Response(200, content=b"HGNC_ID\n", headers={"ETag": '"w"'})
     )
+    ncbi = respx.get("https://example.test/gene_info.gz").mock(
+        return_value=httpx.Response(200, content=b"gz", headers={"Last-Modified": "L"})
+    )
     bulk = downloader.download_bulk(cfg)
     assert bulk.changed is True
-    assert bulk.complete_set.path and bulk.withdrawn.path
+    assert bulk.complete_set.path and bulk.withdrawn.path and bulk.ncbi_gene_info.path
+
+    # Unchanged HGNC dumps: gene_info is not fetched again, its cached validator is kept.
+    respx.get(_URL).mock(return_value=httpx.Response(304))
+    respx.get("https://example.test/withdrawn.txt").mock(return_value=httpx.Response(304))
+    again = downloader.download_bulk(cfg)
+    assert again.changed is False and ncbi.call_count == 1
+    assert again.ncbi_gene_info.last_modified == "L"
+
+    # NCBI down while HGNC changed: the previous copy is reused, the HGNC update still builds.
+    respx.get(_URL).mock(return_value=httpx.Response(200, content=b"{}"))
+    respx.get("https://example.test/gene_info.gz").mock(return_value=httpx.Response(503))
+    degraded = downloader.download_bulk(cfg)
+    assert degraded.changed is True
+    assert degraded.ncbi_gene_info.path and degraded.ncbi_gene_info.last_modified == "L"
+    degraded.ncbi_gene_info.path.unlink()  # no previous copy: the failure is not hidden
+    with pytest.raises(DownloadError):
+        downloader.download_bulk(cfg)

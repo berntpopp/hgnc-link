@@ -25,6 +25,9 @@ _DEFAULT_DATA_DIR = _PROJECT_ROOT / "data"
 _GCS = "https://storage.googleapis.com/public-download-files/hgnc"
 DEFAULT_COMPLETE_SET_URL = f"{_GCS}/json/json/hgnc_complete_set.json"
 DEFAULT_WITHDRAWN_URL = f"{_GCS}/tsv/tsv/withdrawn.txt"
+DEFAULT_NCBI_GENE_INFO_URL = (
+    "https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz"
+)
 DEFAULT_REST_BASE_URL = "https://rest.genenames.org"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _MUTABLE_TAGS = frozenset({"latest", "main", "master", "head", "stable", "current"})
@@ -89,6 +92,10 @@ class HgncDataConfig(BaseModel):
     withdrawn_url: str = Field(
         default=DEFAULT_WITHDRAWN_URL,
         description="URL of the HGNC withdrawn.txt dump.",
+    )
+    ncbi_gene_info_url: str = Field(
+        default=DEFAULT_NCBI_GENE_INFO_URL,
+        description="URL of the NCBI Gene gene_info dump (source of ncbi_gene_synonyms).",
     )
     download_timeout: int = Field(
         default=180,

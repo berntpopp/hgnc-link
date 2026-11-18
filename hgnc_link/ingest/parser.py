@@ -10,12 +10,23 @@ separately into retired-ID -> successor redirects.
 from __future__ import annotations
 
 import csv
+import gzip
 import io
 import json
 from pathlib import Path
 from typing import Any
 
-from hgnc_link.constants import LIST_FIELDS, SCALAR_FIELDS, XREF_FIELDS
+from hgnc_link.constants import (
+    LIST_FIELDS,
+    NCBI_SYNONYM_MATCH,
+    NCBI_SYNONYMS_FIELD,
+    SCALAR_FIELDS,
+    XREF_FIELDS,
+)
+from hgnc_link.exceptions import DataUnavailableError
+from hgnc_link.safe_fields import safe_symbol
+
+_HUMAN_TAX_ID = "9606"
 
 
 def _as_list(value: Any) -> list[str]:
@@ -88,7 +99,8 @@ def symbol_lookup_rows(gene: dict[str, Any]) -> list[tuple[str, str, str]]:
 
     ``symbol_type`` is ``current`` for the approved symbol, ``previous`` for each
     ``prev_symbol``, and ``alias`` for each ``alias_symbol``. Current wins on
-    collision (handled by insert ordering in the builder).
+    collision (handled by insert ordering in the builder). An NCBI Gene synonym
+    HGNC does not already carry for this gene adds an ``ncbi_synonym`` row.
     """
     hgnc_id = gene["hgnc_id"]
     rows: list[tuple[str, str, str]] = []
@@ -99,7 +111,32 @@ def symbol_lookup_rows(gene: dict[str, Any]) -> list[tuple[str, str, str]]:
         rows.append((prev.upper(), hgnc_id, "previous"))
     for alias in gene.get("alias_symbol", []):
         rows.append((alias.upper(), hgnc_id, "alias"))
+    seen = {row[0] for row in rows}
+    for synonym in gene.get(NCBI_SYNONYMS_FIELD, []):
+        if synonym.upper() not in seen:
+            seen.add(synonym.upper())
+            rows.append((synonym.upper(), hgnc_id, NCBI_SYNONYM_MATCH))
     return rows
+
+
+def parse_ncbi_synonyms(path: Path) -> dict[str, list[str]]:
+    """Map Entrez Gene ID -> NCBI ``Synonyms`` from a ``gene_info.gz`` dump (human rows).
+
+    NCBI Gene is a third-party source, so only tokens matching the gene-symbol
+    grammar are kept (no whitespace, so no prose can reach a response).
+    """
+    synonyms: dict[str, list[str]] = {}
+    with gzip.open(path, "rt", encoding="utf-8") as handle:
+        for line in handle:
+            columns = line.rstrip("\n").split("\t")
+            if len(columns) < 5 or columns[0] != _HUMAN_TAX_ID:
+                continue
+            kept = [token for token in _as_list(columns[4]) if safe_symbol(token)]
+            if kept:
+                synonyms[columns[1]] = kept
+    if not synonyms:
+        raise DataUnavailableError("The NCBI gene_info dump has no human gene synonyms.")
+    return synonyms
 
 
 def xref_rows(gene: dict[str, Any]) -> list[tuple[str, str, str, str]]:

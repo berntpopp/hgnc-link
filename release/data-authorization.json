@@ -13,6 +13,22 @@
     "terms_retrieved": "2026-11-13",
     "quote": "The HUGO Gene Nomenclature Committee (HGNC) wants to ensure that our information is accessible to the public and free to use, for this reason all data is released under the Creative Commons Public Domain (CC0) License. This means that any form of reuse of the content is permitted. [...] Although stating the source is not mandatory, the HGNC recommends attribution (e.g. in publications, services or products) for any of its online services, databases or software."
   },
+  "supplementary_sources": [
+    {
+      "name": "NCBI Gene gene_info (Homo_sapiens.gene_info.gz), column Synonyms",
+      "url": "https://ftp.ncbi.nlm.nih.gov/gene/DATA/GENE_INFO/Mammalia/Homo_sapiens.gene_info.gz",
+      "used_for": "gene.ncbi_gene_synonyms and symbol_lookup rows of type ncbi_synonym, joined on the Entrez Gene ID HGNC assigns; never merged into the HGNC alias or previous symbols",
+      "license": {
+        "name": "NCBI policy, Molecular Data Usage (no NCBI restrictions on use or distribution)",
+        "terms_url": "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+        "terms_retrieved": "2026-11-18",
+        "quote": "NCBI itself places no restrictions on the use or distribution of the data contained therein.",
+        "caveat": "The same policy notes that submitters of original data may claim rights NCBI cannot waive."
+      },
+      "attribution": "Gene synonyms from NCBI Gene (National Center for Biotechnology Information, U.S. National Library of Medicine), https://www.ncbi.nlm.nih.gov/gene/.",
+      "authorization": "Proposed in berntpopp/hgnc-link#125. The repository owner extends the redistribution determination in this record to this source by merging the pull request that adds this entry; it is not an approval by NCBI."
+    }
+  ],
   "attribution": "Gene nomenclature data from the HUGO Gene Nomenclature Committee (HGNC), www.genenames.org, released under CC0. Recommended citation: Seal RL, Braschi B, Gray K, McClay J, Tweedie S, Bruford EA. Genenames.org: the HGNC and PGNC resources in 2026. Nucleic Acids Research (Database issue). HGNC (RRID:SCR_002827).",
   "disclaimer": "Research use only; not clinical decision support."
 }

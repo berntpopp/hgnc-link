@@ -11,12 +11,39 @@ sit in front of other tools.
 |------|----------|
 | `hgnc_complete_set.json` | Every approved HGNC record — symbols, names, aliases, previous symbols, cross-references. |
 | `withdrawn.txt` | Retired HGNC IDs and their successors, so a withdrawn symbol redirects instead of 404-ing. |
+| `Homo_sapiens.gene_info.gz` (NCBI Gene) | The `Synonyms` column, joined on the Entrez Gene ID HGNC assigns. Supplies `ncbi_gene_synonyms`; see [NCBI Gene synonyms](#ncbi-gene-synonyms). |
 
-Both are published by [genenames.org](https://www.genenames.org/) to a public Google
+The two HGNC files are published by [genenames.org](https://www.genenames.org/) to a public Google
 Cloud Storage bucket (`DEFAULT_COMPLETE_SET_URL` / `DEFAULT_WITHDRAWN_URL` in
 `hgnc_link/config.py`; override with `HGNC_LINK_DATA__COMPLETE_SET_URL` /
 `__WITHDRAWN_URL`). No API key, no authentication. The complete set is roughly 33 MB;
 a full build takes seconds.
+
+## NCBI Gene synonyms
+
+HGNC and NCBI Gene keep different alias lists. For NUTM2G, HGNC has the previous symbol
+`FAM22G` and no alias, while NCBI Gene (Gene ID 441457) lists `FAM22G` and `NUTMG`. People
+asking for a gene's "aliases" usually mean the NCBI list, so the build joins it in — as a
+**separate source**, never merged into HGNC's fields:
+
+- `get_gene` returns `ncbi_gene_synonyms` next to `alias_symbol` / `prev_symbol`, in the
+  same response modes (compact, standard, full). The HGNC fields stay exactly as HGNC
+  publishes them; the NCBI list may repeat or extend them.
+- `resolve_symbol` resolves a symbol only NCBI lists with `match_type: "ncbi_synonym"`. It
+  ranks below every HGNC match (current, previous, alias) and below the withdrawn
+  redirect. One shared by several genes is `ambiguous_query`, like a shared alias.
+- NCBI is a third-party source, so only tokens matching the gene-symbol grammar
+  (`safe_symbol`) are ingested. Synonyms with spaces or other characters (about 0.2 %,
+  e.g. `ADSS 2`, `apo(a)`) are dropped.
+
+The dump is `Homo_sapiens.gene_info.gz` on the NCBI FTP site (about 5 MB;
+`HGNC_LINK_DATA__NCBI_GENE_INFO_URL`). NCBI regenerates it daily, so it never triggers a
+rebuild on its own: it is fetched whenever the HGNC dumps changed (if NCBI is unreachable the previous copy
+is reused, so an HGNC update is never held back), and its
+`Last-Modified` is recorded in `meta`, `get_hgnc_diagnostics`
+(`ncbi_gene_info_last_modified`) and `get_server_capabilities` (`ncbi_gene_synonyms`).
+An index built before this source existed (including a pinned data release) is still
+served; it just has no NCBI synonyms. The join adds about 3 % to the SQLite file.
 
 ## Building the index
 
@@ -61,8 +88,8 @@ the dumps at boot (genefoundry-router#63 option A):
    (`build_utc` pinned to the complete set's `Last-Modified`, no build duration,
    rollback journal instead of WAL), so the same dumps always build to the same
    bytes. `hgnc-link-data package` writes `hgnc.sqlite.gz` (gzip, zero mtime),
-   `manifest.json` (upstream URLs, ETag, Last-Modified, dump SHA-256s, counts,
-   commit, licence, attribution), `data-authorization.json` and `SHA256SUMS` under
+   `manifest.json` (upstream URLs, ETag, Last-Modified, dump SHA-256s including the
+   NCBI `gene_info`, counts, commit, licence, attribution), `data-authorization.json` and `SHA256SUMS` under
    the content-addressed tag `data-hgnc-<first 16 hex of the SQLite SHA-256>`.
    Unchanged dumps produce an existing tag and the run is a no-op.
 2. A new tag waits on the `data-release` environment (owner review, `main` only),
@@ -97,6 +124,12 @@ whether a string is a current symbol, a previous symbol, an alias or an ID.
 HGNC data is released with **no usage restrictions** (effectively public domain /
 CC0). Attribution is **requested but not required**. This is unusually permissive —
 do not copy a restrictive licence stanza from a sibling `-link` repo onto it.
+
+NCBI Gene synonyms: NCBI's [policy](https://www.ncbi.nlm.nih.gov/home/about/policies/)
+(retrieved 2026-11-18) says "NCBI itself places no restrictions on the use or
+distribution of the data contained therein", and notes that original submitters may
+hold rights NCBI cannot waive. `release/data-authorization.json` lists the source under
+`supplementary_sources`; packaging refuses an index that contains it without that entry.
 
 The `hgnc-link` **code** is [MIT](../LICENSE).
 

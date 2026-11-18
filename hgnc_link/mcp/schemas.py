@@ -56,6 +56,7 @@ DIAGNOSTICS_SCHEMA = _envelope(
     withdrawn_count=_INT,
     symbol_lookup_rows=_INT,
     source_last_modified=_STR,
+    ncbi_gene_info_last_modified=_STR_NULL,
     built_utc=_STR,
     live_fallback_enabled=_BOOL,
 )
@@ -95,6 +96,7 @@ GENE_SCHEMA = _envelope(
     requested_query=_STR,
     alias_symbol=_ARR,
     prev_symbol=_ARR,
+    ncbi_gene_synonyms=_ARR,
     gene_group=_ARR,
     gene_group_id=_ARR,
     entrez_id=_STR,

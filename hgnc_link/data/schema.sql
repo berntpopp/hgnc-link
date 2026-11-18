@@ -42,7 +42,8 @@ CREATE TABLE gene (
     pubmed_id               TEXT,
     mane_select             TEXT,
     lsdb                    TEXT,
-    rna_central_id          TEXT
+    rna_central_id          TEXT,
+    ncbi_gene_synonyms      TEXT    -- NCBI Gene synonyms (not HGNC); JSON array
 );
 CREATE INDEX idx_gene_symbol_upper ON gene (symbol_upper);
 
@@ -50,7 +51,7 @@ CREATE INDEX idx_gene_symbol_upper ON gene (symbol_upper);
 CREATE TABLE symbol_lookup (
     lookup_symbol  TEXT NOT NULL,   -- uppercased
     hgnc_id        TEXT NOT NULL,
-    symbol_type    TEXT NOT NULL    -- current | previous | alias
+    symbol_type    TEXT NOT NULL    -- current | previous | alias | ncbi_synonym
 );
 CREATE INDEX idx_symbol_lookup ON symbol_lookup (lookup_symbol);
 
@@ -105,5 +106,7 @@ CREATE TABLE meta (
     withdrawn_count          INTEGER,
     symbol_lookup_count      INTEGER,
     build_utc                TEXT,
-    build_duration_s         REAL
+    build_duration_s         REAL,
+    source_ncbi_gene_info_url            TEXT,
+    source_ncbi_gene_info_last_modified  TEXT
 );

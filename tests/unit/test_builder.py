@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from hgnc_link.ingest.lock import build_lock
 
 _CS = "https://example.test/hgnc_complete_set.json"
 _WD = "https://example.test/withdrawn.txt"
+_NCBI = "https://example.test/Homo_sapiens.gene_info.gz"
 _DOC = {
     "response": {
         "docs": [
@@ -26,13 +28,25 @@ _DOC = {
 
 
 def _config(tmp_path: Path) -> HgncDataConfig:
-    return HgncDataConfig(data_dir=tmp_path, complete_set_url=_CS, withdrawn_url=_WD)
+    return HgncDataConfig(
+        data_dir=tmp_path, complete_set_url=_CS, withdrawn_url=_WD, ncbi_gene_info_url=_NCBI
+    )
+
+
+def _mock_ncbi() -> None:
+    respx.get(_NCBI).mock(
+        return_value=httpx.Response(
+            200,
+            content=gzip.compress(b"9606\t673\tBRAF\t-\tRAFB1\n"),
+            headers={"Last-Modified": "Wed, 18 Nov 2026 11:15:48 GMT"},
+        )
+    )
 
 
 def test_read_meta_roundtrip(built_db: Path) -> None:
     meta = builder.read_meta(built_db)
     assert meta is not None
-    assert meta.gene_count == 8
+    assert meta.gene_count == 9
     assert builder.read_meta(Path("/nope/x.sqlite")) is None
 
 
@@ -51,11 +65,14 @@ def test_ensure_database_bootstraps(tmp_path: Path) -> None:
     respx.get(_WD).mock(
         return_value=httpx.Response(200, content=b"HGNC_ID\tSTATUS\tWITHDRAWN_SYMBOL\tM\n")
     )
+    _mock_ncbi()
     cfg = _config(tmp_path)
     path = builder.ensure_database(cfg)
     assert path.exists()
     meta = builder.read_meta(path)
     assert meta is not None and meta.gene_count == 1
+    assert meta.source_ncbi_gene_info_url == _NCBI
+    assert meta.source_ncbi_gene_info_last_modified == "Wed, 18 Nov 2026 11:15:48 GMT"
 
 
 @respx.mock
@@ -67,6 +84,7 @@ def test_rebuild_not_modified(tmp_path: Path) -> None:
     respx.get(_WD).mock(
         return_value=httpx.Response(200, content=b"HGNC_ID\n", headers={"ETag": '"w"'})
     )
+    _mock_ncbi()
     builder.ensure_database(cfg)
     respx.get(_CS).mock(return_value=httpx.Response(304))
     respx.get(_WD).mock(return_value=httpx.Response(304))

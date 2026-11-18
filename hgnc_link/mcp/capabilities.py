@@ -12,6 +12,7 @@ from hgnc_link.constants import (
     HGNC_LICENSE,
     LOCUS_GROUPS,
     MATCH_TYPES,
+    NCBI_GENE_SOURCE,
     RECOMMENDED_CITATION,
     STATUS_VALUES,
     XREF_FIELDS,
@@ -82,6 +83,7 @@ def _hgnc_release() -> str:
 
 def build_capabilities() -> dict[str, Any]:
     """Return the discovery surface describing this server."""
+    meta = read_meta(settings.data.db_path)
     return {
         "server": "hgnc-link",
         "server_version": __version__,
@@ -89,7 +91,8 @@ def build_capabilities() -> dict[str, Any]:
         "hgnc_release": _hgnc_release(),
         "data_source": (
             "Local SQLite index built from the HGNC bulk dumps "
-            "(hgnc_complete_set.json + withdrawn.txt), refreshed by cron."
+            "(hgnc_complete_set.json + withdrawn.txt), refreshed by cron. NCBI Gene "
+            "synonyms are joined in as the separate ncbi_gene_synonyms field."
         ),
         "research_use_only": True,
         "research_use_notice": RESEARCH_USE_NOTICE,
@@ -100,6 +103,18 @@ def build_capabilities() -> dict[str, Any]:
         "response_modes": list(RESPONSE_MODES),
         "default_response_mode": DEFAULT_RESPONSE_MODE,
         "match_types": list(MATCH_TYPES),
+        "ncbi_gene_synonyms": {
+            "source": NCBI_GENE_SOURCE,
+            "release": (meta.source_ncbi_gene_info_last_modified if meta else None) or "not-loaded",
+            "note": (
+                "get_gene returns NCBI Gene's synonyms as ncbi_gene_synonyms (compact, "
+                "standard, full), never merged into HGNC's alias_symbol / prev_symbol. "
+                "resolve_symbol resolves a synonym only NCBI lists with match_type "
+                "'ncbi_synonym', after every HGNC match and the withdrawn redirect; one "
+                "shared by several genes is ambiguous_query. Synonyms that are not "
+                "symbol-shaped tokens are dropped at build time."
+            ),
+        },
         "status_values": list(STATUS_VALUES),
         "locus_groups": list(LOCUS_GROUPS),
         "cross_reference_databases": [{"field": f, "label": label} for f, label in XREF_FIELDS],
@@ -151,6 +166,7 @@ def build_capabilities() -> dict[str, Any]:
         "recommended_workflows": [
             "any symbol/id -> resolve_symbol -> get_gene -> get_gene_cross_references",
             "outdated/alias symbol -> resolve_symbol (match_type tells you previous vs alias)",
+            "all aliases of a gene -> get_gene: alias_symbol + prev_symbol + ncbi_gene_synonyms",
             "external id (ensembl/entrez/uniprot/omim) -> resolve_gene_by_xref -> get_gene",
             "free text -> search_genes -> get_gene",
             "gene family -> get_gene_group (by id or name)",

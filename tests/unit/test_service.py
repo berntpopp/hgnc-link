@@ -206,7 +206,7 @@ def test_resolve_batch_ambiguous_inline(service: HgncService) -> None:
 def test_diagnostics(service: HgncService) -> None:
     d = service.get_diagnostics()
     assert d["data_available"] is True
-    assert d["gene_count"] == 8
+    assert d["gene_count"] == 9
 
 
 def test_diagnostics_live_fallback_report_is_honest(service: HgncService) -> None:

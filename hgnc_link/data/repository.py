@@ -14,13 +14,13 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from hgnc_link.constants import LIST_FIELDS
+from hgnc_link.constants import JSON_LIST_COLUMNS, NCBI_SYNONYM_MATCH
 from hgnc_link.exceptions import DataUnavailableError
 from hgnc_link.identifiers import normalize_hgnc_id, strip_accession_version
 
 _FTS_TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 # Priority used when a symbol resolves to several lookup rows.
-_TYPE_PRIORITY = {"current": 0, "previous": 1, "alias": 2}
+_TYPE_PRIORITY = {"current": 0, "previous": 1, "alias": 2, NCBI_SYNONYM_MATCH: 3}
 
 
 def _escape_like(text: str) -> str:
@@ -83,7 +83,7 @@ class HgncRepository:
             if key == "symbol_upper":
                 continue
             value = row[key]
-            if key in LIST_FIELDS:
+            if key in JSON_LIST_COLUMNS:
                 record[key] = json.loads(value) if value else []
             else:
                 record[key] = value

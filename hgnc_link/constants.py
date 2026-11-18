@@ -57,6 +57,14 @@ LIST_FIELDS: tuple[str, ...] = (
     "rna_central_id",
 )
 
+#: NCBI Gene "Synonyms" for the gene's Entrez ID (gene_info, joined at build time).
+#: NOT an HGNC field: never merged into ``alias_symbol`` / ``prev_symbol``.
+NCBI_SYNONYMS_FIELD = "ncbi_gene_synonyms"
+#: ``symbol_lookup.symbol_type`` / resolve ``match_type`` for an NCBI-only synonym.
+NCBI_SYNONYM_MATCH = "ncbi_synonym"
+#: Every JSON-encoded list column on the ``gene`` table.
+JSON_LIST_COLUMNS: tuple[str, ...] = (*LIST_FIELDS, NCBI_SYNONYMS_FIELD)
+
 #: Ordered cross-reference fields surfaced by get_gene_cross_references, mapping
 #: the HGNC field name to a human-readable database label.
 XREF_FIELDS: tuple[tuple[str, str], ...] = (
@@ -207,6 +215,7 @@ MATCH_TYPES: tuple[str, ...] = (
     "current",
     "previous",
     "alias",
+    NCBI_SYNONYM_MATCH,
     "withdrawn",
 )
 
@@ -214,6 +223,13 @@ RECOMMENDED_CITATION = (
     "Seal RL, Braschi B, Gray K, Jones TEM, Tweedie S, Haim-Vilmovsky L, "
     "Bruford EA. Genenames.org: the HGNC resources in 2023. Nucleic Acids Res. "
     "2023;51(D1):D1003-D1009. doi:10.1093/nar/gkac888. RRID:SCR_002827."
+)
+
+#: Supplementary source of ``ncbi_gene_synonyms``; terms retrieved 2026-11-18.
+NCBI_GENE_SOURCE = (
+    "NCBI Gene gene_info (Homo_sapiens.gene_info.gz, column Synonyms), joined on the "
+    "Entrez Gene ID HGNC assigns. NCBI places no restrictions on the use or "
+    "distribution of its molecular data (https://www.ncbi.nlm.nih.gov/home/about/policies/)."
 )
 
 #: HGNC data is released with no usage restrictions (effectively CC0).

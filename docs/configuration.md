@@ -34,6 +34,7 @@ The bulk downloads are built into a SQLite index — see [Data](data.md).
 | `HGNC_LINK_DATA__DB_FILENAME` | `hgnc.sqlite` (image: `current/hgnc.sqlite`) | Index filename within `DATA_DIR`. |
 | `HGNC_LINK_DATA__COMPLETE_SET_URL` | HGNC GCS bucket | `hgnc_complete_set.json` dump URL. |
 | `HGNC_LINK_DATA__WITHDRAWN_URL` | HGNC GCS bucket | `withdrawn.txt` dump URL. |
+| `HGNC_LINK_DATA__NCBI_GENE_INFO_URL` | NCBI FTP (`Homo_sapiens.gene_info.gz`) | NCBI Gene dump that supplies `ncbi_gene_synonyms`. |
 | `HGNC_LINK_DATA__DOWNLOAD_TIMEOUT` | `180` | HTTP timeout (s) for a bulk download. |
 | `HGNC_LINK_DATA__MAX_DOWNLOAD_BYTES` | `134217728` (128 MiB) | **Download-size cap.** The transfer aborts past it; the dumps measured under 64 MiB on 2026-07-10. Raise only for a larger approved HGNC export. |
 | `HGNC_LINK_DATA__MAX_DOWNLOAD_SECONDS` | `900.0` | **Download-time cap.** Total transfer budget (s); measured under 450 s on 2026-07-10. |
