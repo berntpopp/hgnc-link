@@ -416,8 +416,49 @@
     "uniprot_ids": [
      "A0A003"
     ]
+   },
+   {
+    "agr": "HGNC:23449",
+    "ccds_id": [
+     "CCDS43854",
+     "CCDS55329"
+    ],
+    "date_approved_reserved": "2004-05-27",
+    "date_modified": "2023-01-20",
+    "date_name_changed": "2013-03-14",
+    "date_symbol_changed": "2013-05-02",
+    "ensembl_gene_id": "ENSG00000188152",
+    "entrez_id": "441457",
+    "hgnc_id": "HGNC:23449",
+    "location": "9q22.33",
+    "locus_group": "protein-coding gene",
+    "locus_type": "gene with protein product",
+    "mane_select": [
+     "ENST00000372322.4",
+     "NM_001170741.3"
+    ],
+    "mgd_id": [
+     "MGI:2685652"
+    ],
+    "name": "NUT family member 2G",
+    "prev_name": [
+     "family with sequence similarity 22, member G"
+    ],
+    "prev_symbol": [
+     "FAM22G"
+    ],
+    "refseq_accession": [
+     "NM_001170741"
+    ],
+    "status": "Approved",
+    "symbol": "NUTM2G",
+    "uniprot_ids": [
+     "Q5VZR2"
+    ],
+    "uuid": "f81119d5-c41d-45d0-9c89-96f311beb60f",
+    "vega_id": "OTTHUMG00000020305"
    }
   ],
-  "numFound": 8
+  "numFound": 9
  }
 }

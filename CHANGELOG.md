@@ -6,6 +6,37 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-18
+
+### Added
+
+- **NCBI Gene synonyms** (#125). The index build joins the `Synonyms` column of NCBI's
+  `Homo_sapiens.gene_info.gz` on the Entrez Gene ID HGNC assigns. `get_gene` returns them
+  as the separate `ncbi_gene_synonyms` field (compact, standard, full); HGNC's
+  `alias_symbol` / `prev_symbol` are unchanged and nothing is merged into them.
+  `resolve_symbol` and `resolve_symbols_batch` resolve a symbol only NCBI lists with the new
+  `match_type` `ncbi_synonym`, ranked below every HGNC match and the withdrawn redirect;
+  one shared by several genes is `ambiguous_query`. Example: NUTM2G has HGNC previous
+  symbol `FAM22G` and NCBI synonyms `FAM22G`, `NUTMG`, so `NUTMG` now resolves.
+- Provenance for the new source: `meta` columns, `ncbi_gene_info_last_modified` in
+  `get_hgnc_diagnostics`, an `ncbi_gene_synonyms` block in `get_server_capabilities`, the
+  dump URL / SHA-256 / `Last-Modified` and `supplementary_sources` in the data-release
+  manifest, and `HGNC_LINK_DATA__NCBI_GENE_INFO_URL`.
+
+### Changed
+
+- The schema change is additive and `SCHEMA_VERSION` stays 1: this version still serves
+  the pinned data release, which has no NCBI synonyms. They appear in the container only
+  after a new data release is published and re-pinned.
+- Requires data release for NCBI synonyms to appear.
+
+### Security
+
+- The `safe_fields` identifier grammars anchor with `\Z` instead of `$`, so a value with a
+  trailing newline no longer passes; a new test feeds hostile NCBI synonyms (prose,
+  injection phrases, bidi/zero-width/control code points, over-long, HTML/markdown, URLs)
+  and asserts each is dropped at ingest.
+
 ## [2.3.0] - 2026-11-18
 
 ### Changed

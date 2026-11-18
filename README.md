@@ -27,7 +27,8 @@ you *how* a symbol matched, and it will not warn you that an alias belongs to se
 genes.
 
 `hgnc-link` collapses that into one local call against a SQLite index of the bulk dumps.
-It runs the full cascade (HGNC ID → current → previous → alias → withdrawn redirect),
+It runs the full cascade (HGNC ID → current → previous → alias → withdrawn redirect →
+NCBI Gene synonym),
 returns the **match provenance** in `match_type`, and surfaces ambiguity as an
 `ambiguous_query` error with the candidate list rather than silently collapsing it to one
 gene.

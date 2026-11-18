@@ -99,6 +99,52 @@ def test_package_writes_verifiable_content_addressed_assets(tmp_path: Path) -> N
     assert again["compressed_sha256"] == manifest["compressed_sha256"]
 
 
+def test_package_records_the_ncbi_source_and_needs_its_authorization(tmp_path: Path) -> None:
+    gene_info = tmp_path / "Homo_sapiens.gene_info.gz"
+    gene_info.write_bytes(gzip.compress(b"9606\t441457\tNUTM2G\t-\tFAM22G|NUTMG\n", mtime=0))
+    config = HgncDataConfig(data_dir=tmp_path / "build", db_filename="hgnc.sqlite")
+    build_database(
+        config,
+        complete_set_path=GENES,
+        withdrawn_path=WITHDRAWN,
+        etag='"e"',
+        last_modified=LAST_MODIFIED,
+        build_utc="2026-09-15T13:48:06+00:00",
+        ncbi_gene_info_path=gene_info,
+        ncbi_last_modified="Wed, 18 Nov 2026 11:15:48 GMT",
+    )
+    arguments = {"complete_set": GENES, "withdrawn": WITHDRAWN, "revision": "0" * 40}
+
+    manifest = package_release(
+        config.db_path,
+        authorization=AUTHORIZATION,
+        output=tmp_path / "release",
+        ncbi_gene_info=gene_info,
+        **arguments,
+    )
+
+    source = manifest["source"]
+    assert source["ncbi_gene_info_url"] == config.ncbi_gene_info_url
+    assert source["ncbi_gene_info_sha256"] == hashlib.sha256(gene_info.read_bytes()).hexdigest()
+    assert source["ncbi_gene_info_last_modified"] == "Wed, 18 Nov 2026 11:15:48 GMT"
+    terms_url = manifest["supplementary_sources"][0]["license"]["terms_url"]
+    assert terms_url == "https://www.ncbi.nlm.nih.gov/home/about/policies/"
+
+    hgnc_only = json.loads(AUTHORIZATION.read_text())
+    del hgnc_only["supplementary_sources"]
+    unauthorized = tmp_path / "hgnc-only.json"
+    unauthorized.write_text(json.dumps(hgnc_only))
+    with pytest.raises(ValueError, match="NCBI"):
+        package_release(
+            config.db_path,
+            authorization=unauthorized,
+            output=tmp_path / "refused",
+            ncbi_gene_info=gene_info,
+            **arguments,
+        )
+    assert not (tmp_path / "refused").exists()
+
+
 def _fake_download(directory: Path, last_modified: str | None) -> BulkDownload:
     complete = directory / "hgnc_complete_set.json"
     withdrawn = directory / "withdrawn.txt"

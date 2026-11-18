@@ -48,6 +48,7 @@ def package_release(
     authorization: Path,
     output: Path,
     revision: str,
+    ncbi_gene_info: Path | None = None,
 ) -> dict[str, Any]:
     """Write the release assets into the new directory *output*; return the manifest."""
     record = json.loads(authorization.read_text(encoding="utf-8"))
@@ -56,6 +57,9 @@ def package_release(
     meta = _meta(database)
     if meta["build_duration_s"] is not None:
         raise ValueError("database was not built reproducibly (pass a pinned build time)")
+    has_ncbi = bool(meta.get("source_ncbi_gene_info_url"))
+    if has_ncbi and (ncbi_gene_info is None or not record.get("supplementary_sources")):
+        raise ValueError("data authorization or dump missing for the NCBI Gene synonyms")
     output.mkdir(parents=True)
     bundle = output / BUNDLE_NAME
     with (
@@ -101,6 +105,13 @@ def package_release(
         "authorization": {"reviewer": record["reviewer"], "reviewed_at": record["reviewed_at"]},
         "disclaimer": record["disclaimer"],
     }
+    if has_ncbi and ncbi_gene_info is not None:
+        manifest["source"] |= {
+            "ncbi_gene_info_url": meta["source_ncbi_gene_info_url"],
+            "ncbi_gene_info_sha256": _sha256(ncbi_gene_info),
+            "ncbi_gene_info_last_modified": meta["source_ncbi_gene_info_last_modified"],
+        }
+        manifest["supplementary_sources"] = record["supplementary_sources"]
     (output / "manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )

@@ -14,13 +14,14 @@ HGNC_SERVER_INSTRUCTIONS = (
     "Committee dataset (genenames.org). It is backed by a local index built from "
     "the HGNC bulk dumps and refreshed by cron, so lookups are fast and offline.\n"
     "- Resolve first: resolve_symbol(query=) maps ANY symbol (current, previous, "
-    "or alias; case-insensitive) or HGNC id (HGNC:1100 or 1100) to the canonical "
+    "alias, or NCBI-only synonym; case-insensitive) or HGNC id (HGNC:1100 or 1100) to the canonical "
     "{hgnc_id, approved_symbol, match_type}. It surfaces ambiguity (an alias used "
     "by several genes) instead of silently picking, and redirects withdrawn/merged "
     "symbols to their successor. resolve_symbols_batch(queries=[...]) does many at "
     "once and never fails on an individual miss.\n"
     "- Records: get_gene(query=) returns the full record (also alias/previous "
-    "aware). search_genes(query=, limit=) is FTS over symbol/name/alias/previous.\n"
+    "aware); its aliases are alias_symbol + prev_symbol (HGNC) plus the separate "
+    "ncbi_gene_synonyms (NCBI Gene). search_genes(query=, limit=) is FTS over symbol/name/alias/previous.\n"
     "- Cross-references: get_gene_cross_references(query=, databases=) maps a gene "
     "to NCBI/Ensembl/UniProt/RefSeq/OMIM/MANE/etc; resolve_gene_by_xref(source=, value=) "
     "is the reverse (e.g. ensembl_gene_id -> gene). get_gene_group(group=) browses "
@@ -42,8 +43,10 @@ HGNC_USAGE_NOTES = (
     "for external ids. Use search_genes for free text, resolve_gene_by_xref to go from an "
     "external id back to HGNC, and get_gene_group to browse a family. Follow "
     "_meta.next_commands to advance without guessing the next tool. resolve_symbol "
-    "carries match_type (current/previous/alias/hgnc_id) so you know whether the "
-    "input was an outdated symbol."
+    "carries match_type (current/previous/alias/ncbi_synonym/hgnc_id) so you know "
+    "whether the input was an outdated symbol or one only NCBI Gene lists. get_gene "
+    "keeps NCBI Gene's synonyms in ncbi_gene_synonyms, apart from HGNC's "
+    "alias_symbol/prev_symbol."
 )
 
 HGNC_REFERENCE_NOTES = (
@@ -51,7 +54,7 @@ HGNC_REFERENCE_NOTES = (
     "rate_limited, internal. A withdrawn/merged symbol "
     "returns not_found with obsolete:true + replaced_by + a next_command to the "
     "successor record. The local index is built from hgnc_complete_set.json + "
-    "withdrawn.txt (HGNC updates Tue/Fri) and refreshed by an external cron job; "
+    "withdrawn.txt (HGNC updates Tue/Fri), plus NCBI Gene synonyms from gene_info, and refreshed by an external cron job; "
     "get_hgnc_diagnostics reports the loaded release and counts. "
     f"{HGNC_LICENSE}"
 )

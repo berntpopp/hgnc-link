@@ -2,7 +2,8 @@ name: Data release
 
 # Builds the HGNC SQLite index reproducibly from ONE download of each upstream
 # dump (`hgnc-link-data build --reproducible`: hgnc_complete_set.json +
-# withdrawn.txt) and publishes it as an immutable, attested, content-addressed
+# withdrawn.txt, plus NCBI gene_info for the synonyms) and publishes it as an
+# immutable, attested, content-addressed
 # GitHub release (`data-hgnc-<sha16>`). Unchanged dumps rebuild to the same
 # bytes and the same tag, so they are never published twice. Publication waits on the `data-release` environment
 # (owner review, `main` only); the `release` environment stays restricted to
@@ -73,7 +74,7 @@ jobs:
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
-          jq -r '"HGNC data snapshot `\(.release_tag)` (research use only; not clinical decision support).\n\n- Upstream: \(.source.complete_set_url) (Last-Modified \(.source.last_modified), sha256 `\(.source.complete_set_sha256)`) and \(.source.withdrawn_url) (sha256 `\(.source.withdrawn_sha256)`).\n- \(.record_counts.genes) genes, \(.record_counts.withdrawn) withdrawn, \(.record_counts.symbol_lookup) symbol lookup rows; data schema \(.data_schema_version).\n- Built by `hgnc-link-data build --reproducible` from commit `\(.transformation.revision)`.\n- `hgnc.sqlite.gz` sha256 `\(.compressed_sha256)` (this is the digest the app pins); expanded sha256 `\(.expanded_sha256)`.\n- License: \(.license.spdx) (\(.license.terms_url)). Redistribution authorized by \(.authorization.reviewer) on \(.authorization.reviewed_at); see data-authorization.json. This records the repository owner decision, not an approval by the HGNC.\n\nAttribution: \(.attribution)"' \
+          jq -r '"HGNC data snapshot `\(.release_tag)` (research use only; not clinical decision support).\n\n- Upstream: \(.source.complete_set_url) (Last-Modified \(.source.last_modified), sha256 `\(.source.complete_set_sha256)`) and \(.source.withdrawn_url) (sha256 `\(.source.withdrawn_sha256)`).\(if .source.ncbi_gene_info_url then "\n- NCBI Gene synonyms (separate `ncbi_gene_synonyms` field): \(.source.ncbi_gene_info_url) (Last-Modified \(.source.ncbi_gene_info_last_modified), sha256 `\(.source.ncbi_gene_info_sha256)`); terms \(.supplementary_sources[0].license.terms_url)." else "" end)\n- \(.record_counts.genes) genes, \(.record_counts.withdrawn) withdrawn, \(.record_counts.symbol_lookup) symbol lookup rows; data schema \(.data_schema_version).\n- Built by `hgnc-link-data build --reproducible` from commit `\(.transformation.revision)`.\n- `hgnc.sqlite.gz` sha256 `\(.compressed_sha256)` (this is the digest the app pins); expanded sha256 `\(.expanded_sha256)`.\n- License: \(.license.spdx) (\(.license.terms_url)). Redistribution authorized by \(.authorization.reviewer) on \(.authorization.reviewed_at); see data-authorization.json. This records the repository owner decision, not an approval by the HGNC.\n\nAttribution: \(.attribution)"' \
             manifest.json > "$RUNNER_TEMP/release-notes.md"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

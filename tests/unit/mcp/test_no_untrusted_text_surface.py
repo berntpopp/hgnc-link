@@ -6,7 +6,10 @@ fencing programme): every tool returns *curated nomenclature* -- HGNC-committee-
 symbols/names/enums and cross-reference IDs -- sourced from HGNC's own
 ``hgnc_complete_set.json`` bulk dump, never third-party free-text prose (no literature
 abstracts, no scraped descriptions, no user-submitted notes). There is therefore nothing to
-fence. This test is the regression guard: it fails loudly if a future change introduces an
+fence. The one third-party value, ``ncbi_gene_synonyms`` (NCBI Gene, issue #125), is a list of
+tokens validated against the gene-symbol grammar at build time (``safe_symbol``: no
+whitespace, so no prose), i.e. identifiers, not free text; ``tests/unit/test_ncbi_synonyms.py``
+pins that a prose token is dropped. This test is the regression guard: it fails loudly if a future change introduces an
 upstream free-text surface without reclassifying the backend and adding a v1.1 fence.
 
 Two layers, matching the depth of the JSON-schema surface:

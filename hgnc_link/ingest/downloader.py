@@ -10,10 +10,11 @@ upstream data actually changed (a daily cron check is then almost always a cheap
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -24,8 +25,11 @@ from hgnc_link.exceptions import DownloadError
 if TYPE_CHECKING:
     from hgnc_link.config import HgncDataConfig
 
+logger = logging.getLogger(__name__)
+
 COMPLETE_SET_FILENAME = "hgnc_complete_set.json"
 WITHDRAWN_FILENAME = "withdrawn.txt"
+NCBI_GENE_INFO_FILENAME = "Homo_sapiens.gene_info.gz"
 CACHE_FILENAME = "download_cache.json"
 _CHUNK_SIZE = 1 << 16
 
@@ -43,15 +47,22 @@ class DownloadResult:
 
 @dataclass
 class BulkDownload:
-    """Outcome of downloading the complete set + withdrawn list together."""
+    """Outcome of downloading the HGNC dumps + the NCBI gene_info synonyms together."""
 
     complete_set: DownloadResult
     withdrawn: DownloadResult
+    ncbi_gene_info: DownloadResult = field(
+        default_factory=lambda: DownloadResult(not_modified=True)
+    )
 
     @property
     def changed(self) -> bool:
-        """True when either file transferred a fresh body this call."""
-        return not self.complete_set.not_modified or not self.withdrawn.not_modified
+        """True when any file transferred a fresh body this call."""
+        return not (
+            self.complete_set.not_modified
+            and self.withdrawn.not_modified
+            and self.ncbi_gene_info.not_modified
+        )
 
 
 def _cache_path(config: HgncDataConfig) -> Path:
@@ -178,7 +189,28 @@ def download_file(
 
 
 def download_bulk(config: HgncDataConfig, *, force: bool = False) -> BulkDownload:
-    """Download the complete set + withdrawn list (conditionally unless ``force``)."""
+    """Download the complete set + withdrawn list (conditionally unless ``force``).
+
+    NCBI regenerates gene_info daily, so it never triggers a rebuild on its own: it
+    is fetched only when the HGNC dumps changed (or no local copy exists). If NCBI is
+    unreachable the previous copy is reused, so an HGNC update is never held back.
+    """
     complete = download_file(config, config.complete_set_url, COMPLETE_SET_FILENAME, force=force)
     withdrawn = download_file(config, config.withdrawn_url, WITHDRAWN_FILENAME, force=force)
-    return BulkDownload(complete_set=complete, withdrawn=withdrawn)
+    bulk = BulkDownload(complete_set=complete, withdrawn=withdrawn)
+    url = config.ncbi_gene_info_url
+    local = config.data_dir / NCBI_GENE_INFO_FILENAME
+    if bulk.changed or not local.exists():
+        try:
+            bulk.ncbi_gene_info = download_file(config, url, NCBI_GENE_INFO_FILENAME, force=True)
+            return bulk
+        except DownloadError:
+            if not local.exists():
+                raise
+            logger.warning("NCBI gene_info download failed; reusing the previous copy")
+    bulk.ncbi_gene_info = DownloadResult(
+        path=local,
+        last_modified=_read_cache(config).get(url, {}).get("last_modified"),
+        not_modified=True,
+    )
+    return bulk

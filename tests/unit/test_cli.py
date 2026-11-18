@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from hgnc_link.ingest import cli
 
 _CS = "https://example.test/hgnc_complete_set.json"
 _WD = "https://example.test/withdrawn.txt"
+_NCBI = "https://example.test/Homo_sapiens.gene_info.gz"
 _DOC = {"response": {"docs": [{"hgnc_id": "HGNC:1097", "symbol": "BRAF", "name": "B-Raf"}]}}
 
 runner = CliRunner()
@@ -22,7 +24,9 @@ runner = CliRunner()
 
 @pytest.fixture
 def patched_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> HgncDataConfig:
-    cfg = HgncDataConfig(data_dir=tmp_path, complete_set_url=_CS, withdrawn_url=_WD)
+    cfg = HgncDataConfig(
+        data_dir=tmp_path, complete_set_url=_CS, withdrawn_url=_WD, ncbi_gene_info_url=_NCBI
+    )
     monkeypatch.setattr(cli, "get_data_config", lambda: cfg)
     return cfg
 
@@ -33,6 +37,9 @@ def _mock_dumps() -> None:
     )
     respx.get(_WD).mock(
         return_value=httpx.Response(200, content=b"HGNC_ID\n", headers={"ETag": '"w"'})
+    )
+    respx.get(_NCBI).mock(
+        return_value=httpx.Response(200, content=gzip.compress(b"9606\t673\tBRAF\t-\tRAFB1\n"))
     )
 
 
@@ -62,6 +69,7 @@ def test_cli_refresh_not_modified(patched_config: HgncDataConfig) -> None:
     result = runner.invoke(cli.app, ["refresh"])
     assert result.exit_code == 0
     assert "up to date" in result.stdout
+    assert respx.get(_NCBI).call_count == 1  # gene_info rides along with an HGNC rebuild only
 
 
 @respx.mock

@@ -9,7 +9,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from hgnc_link.constants import VERSIONED_XREF_FIELDS, XREF_FIELDS, XREF_SOURCE_ALIASES
+from hgnc_link.constants import (
+    NCBI_SYNONYM_MATCH,
+    VERSIONED_XREF_FIELDS,
+    XREF_FIELDS,
+    XREF_SOURCE_ALIASES,
+)
 from hgnc_link.exceptions import (
     AmbiguousQueryError,
     DataUnavailableError,
@@ -103,6 +108,7 @@ class HgncService:
             "symbol_lookup_rows": meta.get("symbol_lookup_count"),
             "schema_version": meta.get("schema_version"),
             "source_last_modified": meta.get("source_last_modified"),
+            "ncbi_gene_info_last_modified": meta.get("source_ncbi_gene_info_last_modified"),
             "built_utc": meta.get("build_utc"),
             "live_fallback_enabled": self._live_fallback_enabled(),
         }
@@ -117,20 +123,27 @@ class HgncService:
 
         hgnc_id = normalize_hgnc_id(raw)
         if hgnc_id:
-            return self._resolve_id(raw, hgnc_id, mode)
+            return self._resolution(raw, self._gene_by_id(hgnc_id), "hgnc_id", mode=mode)
         reject_malformed_hgnc_id(raw)
 
-        pairs = self.repo.lookup_symbol(raw)
+        pairs = self._lookup_symbol(raw)
         if pairs:
             return self._resolve_symbol_pairs(raw, pairs, mode)
 
         self._raise_for_withdrawn_symbol(raw)
         raise NotFoundError(f"No HGNC record matches '{raw}'.")
 
-    def _resolve_id(self, raw: str, hgnc_id: str, mode: str) -> dict[str, Any]:
+    def _lookup_symbol(self, raw: str) -> list[tuple[str, str]]:
+        """Lookup rows, best first; HGNC's withdrawn redirect outranks an NCBI-only synonym."""
+        pairs = self.repo.lookup_symbol(raw)
+        if pairs and pairs[0][1] == NCBI_SYNONYM_MATCH:
+            self._raise_for_withdrawn_symbol(raw)
+        return pairs
+
+    def _gene_by_id(self, hgnc_id: str) -> dict[str, Any]:
         gene = self.repo.get_gene(hgnc_id)
         if gene is not None:
-            return self._resolution(raw, gene, "hgnc_id", mode=mode)
+            return gene
         withdrawn = self.repo.get_withdrawn(hgnc_id)
         if withdrawn is not None:
             raise WithdrawnEntryError(
@@ -285,30 +298,14 @@ class HgncService:
     def _resolve_to_gene(self, raw: str) -> tuple[dict[str, Any], str]:
         hgnc_id = normalize_hgnc_id(raw)
         if hgnc_id:
-            gene = self.repo.get_gene(hgnc_id)
-            if gene is not None:
-                return gene, "hgnc_id"
-            withdrawn = self.repo.get_withdrawn(hgnc_id)
-            if withdrawn is not None:
-                raise WithdrawnEntryError(
-                    hgnc_id, status=withdrawn["status"], replaced_by=withdrawn["replaced_by"]
-                )
-            raise NotFoundError(f"No HGNC record for {hgnc_id}.")
+            return self._gene_by_id(hgnc_id), "hgnc_id"
         reject_malformed_hgnc_id(raw)
-        pairs = self.repo.lookup_symbol(raw)
+        pairs = self._lookup_symbol(raw)
         if pairs:
             best_type = pairs[0][1]
             best = [p for p in pairs if p[1] == best_type]
             if len(best) > 1:
-                candidates = [
-                    _brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, stype)
-                    for hid, stype in best
-                ]
-                raise AmbiguousQueryError(
-                    f"'{raw}' is a {best_type} symbol for {len(best)} genes; "
-                    "use resolve_symbol or get_gene with the HGNC ID.",
-                    candidates=candidates,
-                )
+                raise self._ambiguity_error(raw, best_type, best)
             gene = self.repo.get_gene(best[0][0])
             if gene is not None:
                 return gene, best_type

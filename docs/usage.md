@@ -27,7 +27,15 @@ resolve_symbols_batch(queries=["MLL2","CPAMD9","TP53","BRCA1"])
 resolve_symbol(query="MLL2")  → {hgnc_id: HGNC:7133, approved_symbol: KMT2D, match_type: previous}
 ```
 `match_type` tells you whether the input was the current symbol, a *previous*
-(renamed) symbol, an *alias*, or an HGNC ID.
+(renamed) symbol, an *alias*, an HGNC ID, or an `ncbi_synonym` (a symbol only NCBI
+Gene lists, e.g. `NUTMG` → NUTM2G).
+
+**All aliases of a gene**
+```
+get_gene(query="NUTM2G") → {prev_symbol: [FAM22G], ncbi_gene_synonyms: [FAM22G, NUTMG], …}
+```
+`alias_symbol` / `prev_symbol` are HGNC's; `ncbi_gene_synonyms` is NCBI Gene's own list,
+kept separate. See [Data](data.md#ncbi-gene-synonyms).
 
 **Gene → cross-references → another resource**
 ```
@@ -60,7 +68,7 @@ identity + anchor IDs; `standard`/`full` return the complete record.
 - Symbols match case-insensitively.
 - A withdrawn/merged symbol returns a `not_found` error with `obsolete: true`,
   `replaced_by`, and a `next_command` to the successor record.
-- An alias shared by several genes returns `ambiguous_query` with the candidate
+- An alias or NCBI synonym shared by several genes returns `ambiguous_query` with the candidate
   list — it is never silently collapsed to one gene.
 
 ## Chaining

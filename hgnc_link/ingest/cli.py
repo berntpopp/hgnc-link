@@ -16,7 +16,12 @@ import typer
 from hgnc_link.config import get_data_config
 from hgnc_link.exceptions import DownloadError
 from hgnc_link.ingest.builder import BuildMeta, build_database, read_meta, rebuild
-from hgnc_link.ingest.downloader import COMPLETE_SET_FILENAME, WITHDRAWN_FILENAME, download_bulk
+from hgnc_link.ingest.downloader import (
+    COMPLETE_SET_FILENAME,
+    NCBI_GENE_INFO_FILENAME,
+    WITHDRAWN_FILENAME,
+    download_bulk,
+)
 
 app = typer.Typer(
     add_completion=False,
@@ -34,6 +39,7 @@ def _print_summary(meta: BuildMeta, *, header: str) -> None:
     print(f"  symbol_lookup_rows  : {meta.symbol_lookup_count}")
     print(f"  source_etag         : {meta.source_etag}")
     print(f"  source_last_modified: {meta.source_last_modified}")
+    print(f"  ncbi_gene_info      : {meta.source_ncbi_gene_info_last_modified}")
     print(f"  built_utc           : {meta.build_utc}")
     if meta.build_duration_s is not None:
         print(f"  build_seconds       : {meta.build_duration_s}")
@@ -70,6 +76,8 @@ def build(
         etag=download.complete_set.etag,
         last_modified=download.complete_set.last_modified,
         build_utc=build_utc,
+        ncbi_gene_info_path=download.ncbi_gene_info.path,
+        ncbi_last_modified=download.ncbi_gene_info.last_modified,
     )
     _print_summary(meta, header="Built HGNC database:")
 
@@ -90,6 +98,7 @@ def package(
         config.db_path,
         complete_set=config.data_dir / COMPLETE_SET_FILENAME,
         withdrawn=config.data_dir / WITHDRAWN_FILENAME,
+        ncbi_gene_info=config.data_dir / NCBI_GENE_INFO_FILENAME,
         authorization=authorization,
         output=output,
         revision=revision,

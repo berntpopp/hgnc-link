@@ -44,10 +44,10 @@ FORBIDDEN_CODEPOINTS = frozenset(
 # Exact grammars. Canonical HGNC id, gene-symbol token, an allowed-value token or
 # a numeric range descriptor -- all anchored and whitespace-free (prose needs
 # spaces, so an instruction phrase cannot match).
-_HGNC_ID_RE = re.compile(r"^HGNC:\d+$")
-_SYMBOL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@/-]{0,63}$")
-_ALLOWED_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,63}$")
-_ALLOWED_RANGE_RE = re.compile(r"^\d+\.\.\d+( items)?$")
+_HGNC_ID_RE = re.compile(r"^HGNC:\d+\Z")
+_SYMBOL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@/-]{0,63}\Z")
+_ALLOWED_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/@+-]{0,63}\Z")
+_ALLOWED_RANGE_RE = re.compile(r"^\d+\.\.\d+( items)?\Z")
 
 # Closed enums (from the HGNC domain constants).
 _WITHDRAWN_STATUSES = frozenset(s for s in STATUS_VALUES if s != "Approved")

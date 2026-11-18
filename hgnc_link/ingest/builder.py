@@ -13,12 +13,12 @@ import os
 import sqlite3
 import tempfile
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from hgnc_link.constants import LIST_FIELDS, SCHEMA_VERSION
+from hgnc_link.constants import JSON_LIST_COLUMNS, NCBI_SYNONYMS_FIELD, SCHEMA_VERSION
 from hgnc_link.data import load_schema_sql
 from hgnc_link.exceptions import DataUnavailableError
 from hgnc_link.ingest.downloader import BulkDownload, download_bulk
@@ -26,6 +26,7 @@ from hgnc_link.ingest.lock import build_lock
 from hgnc_link.ingest.parser import (
     group_rows,
     iter_normalized_genes,
+    parse_ncbi_synonyms,
     parse_withdrawn,
     symbol_lookup_rows,
     xref_rows,
@@ -56,7 +57,7 @@ _GENE_COLUMNS: tuple[str, ...] = (
     "date_name_changed",
     "date_modified",
     "uuid",
-    *LIST_FIELDS,
+    *JSON_LIST_COLUMNS,
 )
 _INSERT_BATCH = 2000
 
@@ -76,6 +77,8 @@ class BuildMeta:
     symbol_lookup_count: int
     build_utc: str
     build_duration_s: float | None
+    source_ncbi_gene_info_url: str | None = None
+    source_ncbi_gene_info_last_modified: str | None = None
 
 
 @dataclass
@@ -91,7 +94,7 @@ def _gene_value(gene: dict[str, Any], column: str) -> Any:
     if column == "symbol_upper":
         symbol = gene.get("symbol") or ""
         return symbol.upper()
-    if column in LIST_FIELDS:
+    if column in JSON_LIST_COLUMNS:
         return json.dumps(gene.get(column, []))
     return gene.get(column)
 
@@ -186,11 +189,15 @@ def build_database(
     etag: str | None,
     last_modified: str | None,
     build_utc: str | None = None,
+    ncbi_gene_info_path: Path | None = None,
+    ncbi_last_modified: str | None = None,
 ) -> BuildMeta:
     """Build the HGNC SQLite index from the dump files, atomically.
 
     A pinned ``build_utc`` (reproducible release build) also drops the build
-    duration, so the same dumps always yield the same file bytes.
+    duration, so the same dumps always yield the same file bytes. With
+    ``ncbi_gene_info_path`` each gene also gets its NCBI Gene synonyms, joined on
+    the Entrez Gene ID and kept apart from the HGNC alias/previous fields.
     """
     start = time.perf_counter()
     config.data_dir.mkdir(parents=True, exist_ok=True)
@@ -203,6 +210,10 @@ def build_database(
         try:
             conn.executescript(load_schema_sql())
             genes = iter_normalized_genes(complete_set_path)
+            if ncbi_gene_info_path is not None:
+                synonyms = parse_ncbi_synonyms(ncbi_gene_info_path)
+                for gene in genes:
+                    gene[NCBI_SYNONYMS_FIELD] = synonyms.get(gene["entrez_id"] or "", [])
             gene_count = _load_genes(conn, genes)
             withdrawn_count = 0
             if withdrawn_path is not None and withdrawn_path.exists():
@@ -222,6 +233,10 @@ def build_database(
                 symbol_lookup_count=symbol_lookup_count,
                 build_utc=build_utc or datetime.now(tz=UTC).isoformat(),
                 build_duration_s=None if build_utc else round(time.perf_counter() - start, 3),
+                source_ncbi_gene_info_url=(
+                    config.ncbi_gene_info_url if ncbi_gene_info_path is not None else None
+                ),
+                source_ncbi_gene_info_last_modified=ncbi_last_modified,
             )
             _insert_meta(conn, meta)
             conn.commit()
@@ -251,19 +266,9 @@ def read_meta(db_path: Path) -> BuildMeta | None:
         conn.close()
     if row is None:
         return None
-    return BuildMeta(
-        schema_version=row["schema_version"],
-        release=row["release"],
-        source_complete_set_url=row["source_complete_set_url"],
-        source_withdrawn_url=row["source_withdrawn_url"],
-        source_etag=row["source_etag"],
-        source_last_modified=row["source_last_modified"],
-        gene_count=row["gene_count"],
-        withdrawn_count=row["withdrawn_count"],
-        symbol_lookup_count=row["symbol_lookup_count"],
-        build_utc=row["build_utc"],
-        build_duration_s=row["build_duration_s"],
-    )
+    # An index built before the NCBI columns existed simply lacks them (defaults apply).
+    columns = set(row.keys())
+    return BuildMeta(**{f.name: row[f.name] for f in fields(BuildMeta) if f.name in columns})
 
 
 def _build_from_download(config: HgncDataConfig, download: BulkDownload) -> BuildMeta:
@@ -275,6 +280,8 @@ def _build_from_download(config: HgncDataConfig, download: BulkDownload) -> Buil
         withdrawn_path=download.withdrawn.path,
         etag=download.complete_set.etag,
         last_modified=download.complete_set.last_modified,
+        ncbi_gene_info_path=download.ncbi_gene_info.path,
+        ncbi_last_modified=download.ncbi_gene_info.last_modified,
     )
 
 

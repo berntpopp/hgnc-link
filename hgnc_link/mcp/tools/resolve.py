@@ -28,10 +28,12 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         tags={"resolve"},
         description=(
             "Resolve any gene symbol or HGNC id to its canonical record. Accepts a "
-            "current symbol, a previous (withdrawn) symbol, an alias, or an HGNC id "
-            "in either form (HGNC:1100 or 1100), case-insensitively. Returns "
-            "{hgnc_id, approved_symbol, match_type (hgnc_id|current|previous|alias)}. "
-            "An alias shared by several genes returns an ambiguous_query error with "
+            "current symbol, a previous (withdrawn) symbol, an alias, an NCBI Gene "
+            "synonym HGNC does not list, or an HGNC id in either form (HGNC:1100 or "
+            "1100), case-insensitively. Returns {hgnc_id, approved_symbol, match_type "
+            "(hgnc_id|current|previous|alias|ncbi_synonym)}; ncbi_synonym means only "
+            "NCBI Gene (not HGNC) knows the symbol, and it ranks below every HGNC match. "
+            "An alias or synonym shared by several genes returns an ambiguous_query error with "
             "the candidate list (not silently picked); a withdrawn/merged symbol "
             "returns a not_found error that redirects to the successor record. "
             "Signature: resolve_symbol(query, response_mode=)."
@@ -59,7 +61,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         tags={"resolve"},
         description=(
             "Resolve a batch of gene symbols / HGNC ids in one call (max 200). Each "
-            "entry is resolved with the same current->previous->alias cascade as "
+            "entry is resolved with the same current->previous->alias->ncbi_synonym cascade as "
             "resolve_symbol; an individual miss or withdrawal never fails the batch "
             "(it is marked unresolved / obsolete in that entry). Returns per-query "
             "results plus resolved/unresolved counts. "

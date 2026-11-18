@@ -55,7 +55,7 @@ capabilities-as-resource), with a **bulk-ingest data plane** for HGNC.
 - **`data/repository.py`** — read-only `sqlite3` (mode=ro); resolution, search
   (FTS with `LIKE` fallback), xref, group queries.
 - **`services/hgnc_service.py`** — the resolution cascade
-  (`HGNC id → current → previous → alias → withdrawn redirect`), cross-reference
+  (`HGNC id → current → previous → alias → withdrawn redirect → NCBI synonym`), cross-reference
   mapping, search, and group browse. Returns plain dicts; surfaces ambiguity and
   withdrawals rather than collapsing them. Optional `api/client.py` REST fallback
   when the index is not yet built.
