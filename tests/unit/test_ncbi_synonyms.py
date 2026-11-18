@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 
 from hgnc_link.config import HgncDataConfig
+from hgnc_link.constants import NCBI_GENE_SOURCE
 from hgnc_link.data.repository import HgncRepository
 from hgnc_link.exceptions import AmbiguousQueryError, NotFoundError, WithdrawnEntryError
 from hgnc_link.ingest.builder import build_database, read_meta
@@ -120,4 +121,4 @@ async def test_tools_surface_the_field_match_type_and_provenance(
     assert diagnostics["ncbi_gene_info_last_modified"] == "Wed, 18 Nov 2026 11:15:48 GMT"
     capabilities = structured(await facade.call_tool("get_server_capabilities", {"detail": "full"}))
     assert "ncbi_synonym" in capabilities["match_types"]
-    assert "ncbi.nlm.nih.gov" in capabilities["ncbi_gene_synonyms"]["source"]
+    assert capabilities["ncbi_gene_synonyms"]["source"] == NCBI_GENE_SOURCE

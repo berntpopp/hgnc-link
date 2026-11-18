@@ -127,7 +127,8 @@ def test_package_records_the_ncbi_source_and_needs_its_authorization(tmp_path: P
     assert source["ncbi_gene_info_url"] == config.ncbi_gene_info_url
     assert source["ncbi_gene_info_sha256"] == hashlib.sha256(gene_info.read_bytes()).hexdigest()
     assert source["ncbi_gene_info_last_modified"] == "Wed, 18 Nov 2026 11:15:48 GMT"
-    assert "ncbi.nlm.nih.gov" in manifest["supplementary_sources"][0]["license"]["terms_url"]
+    terms_url = manifest["supplementary_sources"][0]["license"]["terms_url"]
+    assert terms_url == "https://www.ncbi.nlm.nih.gov/home/about/policies/"
 
     hgnc_only = json.loads(AUTHORIZATION.read_text())
     del hgnc_only["supplementary_sources"]
