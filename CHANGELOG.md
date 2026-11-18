@@ -17,6 +17,9 @@ All notable changes to hgnc-link are documented here. The format follows
   return fixed, input-free messages, now as `MCPError` with code -32602.
 - Tool annotations use the SDK 2 snake_case fields; `httpx2`/`httpcore2` loggers are pinned
   to WARNING like their httpx counterparts.
+- Security: SDK 2 echoes an unknown JSON-RPC method name in the METHOD_NOT_FOUND error `data`;
+  a low-level middleware now strips it (fixed `Method not found`, -32601, no `data`) in both
+  eras, and the log-scrub filter covers the SDK 2 `mcp.server.runner` dropped-frame records.
 - New test drives `server/discover` → `tools/list` → `tools/call` over the modern era.
 
 ## [2.2.2] - 2026-11-13

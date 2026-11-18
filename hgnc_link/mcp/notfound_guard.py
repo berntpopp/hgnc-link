@@ -57,7 +57,7 @@ from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from fastmcp.tools import ToolResult
 from mcp.shared.exceptions import MCPError
 from mcp.types import TextContent
-from mcp_types import INVALID_PARAMS
+from mcp_types import INVALID_PARAMS, METHOD_NOT_FOUND
 
 from hgnc_link.mcp._sanitize import sanitize_envelope, sanitize_message
 from hgnc_link.mcp.next_commands import cmd
@@ -215,6 +215,16 @@ def _fixed_tool_not_found_result() -> mcp.types.CallToolResult:
     )
 
 
+async def _strip_method_not_found_data(ctx: Any, call_next: Any) -> Any:
+    """Drop the caller-supplied method name SDK 2 puts in METHOD_NOT_FOUND ``data``."""
+    try:
+        return await call_next(ctx)
+    except MCPError as exc:
+        if exc.error.code == METHOD_NOT_FOUND and exc.error.data is not None:
+            raise MCPError(code=METHOD_NOT_FOUND, message="Method not found") from None
+        raise
+
+
 def install_protocol_error_handler(mcp_server: Any) -> None:
     """Wrap the tool/resource/prompt request handlers as the OUTERMOST layer.
 
@@ -223,6 +233,8 @@ def install_protocol_error_handler(mcp_server: Any) -> None:
     wrapper on the raw handlers.
     """
     lowlevel = mcp_server._mcp_server
+    # Outermost: MCP SDK 2 echoes an unknown JSON-RPC method name in METHOD_NOT_FOUND ``data``.
+    lowlevel.middleware.insert(0, _strip_method_not_found_data)
 
     call_tool = lowlevel.get_request_handler("tools/call")
     if call_tool is not None:
@@ -297,6 +309,11 @@ _SCRUB_MARKERS: tuple[str, ...] = (
     "Failed to validate request",
     "Failed to validate notification",
     "Message that failed validation",
+    # mcp.server.runner (SDK 2) echoes dropped frames / unknown notification methods.
+    "dropped %r",
+    "dropped %s",
+    "dropped a frame",
+    "no handler for notification",
 )
 
 # The source loggers on which those records are CREATED. A logging filter runs
@@ -314,6 +331,7 @@ _SCRUB_LOGGERS: tuple[str, ...] = (
     "fastmcp.server.mixins.mcp_operations",
     "mcp",
     "mcp.server.lowlevel.server",
+    "mcp.server.runner",
 )
 
 _SCRUBBED_MESSAGE = "MCP request rejected (details omitted)."
