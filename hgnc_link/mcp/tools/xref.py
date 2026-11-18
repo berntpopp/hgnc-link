@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any
 
+from fastmcp.tools import ToolResult
 from pydantic import Field
 
 from hgnc_link.constants import XREF_LOOKUP_SOURCE_ENUM
@@ -65,7 +66,7 @@ def register_xref_tools(mcp: FastMCP) -> None:
             ),
         ],
         response_mode: ResponseMode = "compact",
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().lookup_by_xref(source, value, response_mode)
             payload["_meta"] = {"next_commands": after_xref(payload.get("results", []))}

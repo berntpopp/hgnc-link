@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hgnc-link"
-version = "2.2.2"
+version = "2.3.0"
 description = "MCP/API server that grounds gene-nomenclature work in the HGNC dataset"
 readme = "README.md"
 license = { text = "MIT" }
@@ -35,8 +35,8 @@ dependencies = [
     "orjson>=3.10.0,<4.0.0",
     "rich>=13.0.0,<16.0.0",
     "typer>=0.27.2,<1.0.0",
-    "mcp[cli]>=1.27.0,<2.0.0",
-    "fastmcp>=3.4.10,<4.0.0",
+    "mcp[cli]>=2.3.0,<3.0.0",
+    "fastmcp>=4.2.2,<5.0.0",
 ]
 
 [dependency-groups]

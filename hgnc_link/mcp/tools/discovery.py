@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
+from fastmcp.tools import ToolResult
 from pydantic import Field
 
 from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
@@ -41,7 +42,7 @@ def register_discovery_tools(mcp: FastMCP) -> None:
             Literal["summary", "full"],
             Field(description="summary (default, light) or full (adds vocabularies/xref dbs)."),
         ] = "summary",
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             signatures = await collect_tool_signatures(mcp)
             return project_capabilities(detail, signatures)
@@ -66,7 +67,7 @@ def register_discovery_tools(mcp: FastMCP) -> None:
             "Signature: get_hgnc_diagnostics()."
         ),
     )
-    async def get_hgnc_diagnostics() -> dict[str, Any]:
+    async def get_hgnc_diagnostics() -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().get_diagnostics()
             payload["_meta"] = {

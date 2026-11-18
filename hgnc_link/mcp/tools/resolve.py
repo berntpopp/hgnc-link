@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any
 
+from fastmcp.tools import ToolResult
 from pydantic import Field
 
 from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
@@ -38,7 +39,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
     )
     async def resolve_symbol(
         query: QueryStr, response_mode: ResponseMode = "compact"
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().resolve(query, response_mode)
             payload["_meta"] = {"next_commands": after_resolve(payload)}
@@ -75,7 +76,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
             ),
         ],
         response_mode: ResponseMode = "compact",
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().resolve_batch(queries, response_mode)
             payload["_meta"] = {"next_commands": [cmd("get_server_capabilities")]}

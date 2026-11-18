@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any
 
+from fastmcp.tools import ToolResult
 from pydantic import Field
 
 from hgnc_link.constants import XREF_FILTER_ENUM
@@ -35,7 +36,9 @@ def register_gene_tools(mcp: FastMCP) -> None:
             "Signature: get_gene(query, response_mode=)."
         ),
     )
-    async def get_gene(query: QueryStr, response_mode: ResponseMode = "compact") -> dict[str, Any]:
+    async def get_gene(
+        query: QueryStr, response_mode: ResponseMode = "compact"
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().get_gene(query, response_mode)
             payload["_meta"] = {"next_commands": after_get_gene(payload)}
@@ -73,7 +76,7 @@ def register_gene_tools(mcp: FastMCP) -> None:
         ],
         limit: Annotated[int, Field(ge=1, le=200, description="Max hits (default 25).")] = 25,
         response_mode: ResponseMode = "compact",
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().search(query, limit=limit, mode=response_mode)
             payload["_meta"] = {"next_commands": after_search(query, payload.get("results", []))}
@@ -125,7 +128,7 @@ def register_gene_tools(mcp: FastMCP) -> None:
             ),
         ] = None,
         response_mode: ResponseMode = "compact",
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().get_cross_references(
                 query, databases=databases, mode=response_mode
