@@ -6,6 +6,7 @@ synthetic rows for ambiguity, the withdrawn redirect and the token grammar).
 
 from __future__ import annotations
 
+import gzip
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,8 @@ from hgnc_link.constants import NCBI_GENE_SOURCE
 from hgnc_link.data.repository import HgncRepository
 from hgnc_link.exceptions import AmbiguousQueryError, NotFoundError, WithdrawnEntryError
 from hgnc_link.ingest.builder import build_database, read_meta
+from hgnc_link.ingest.parser import parse_ncbi_synonyms
+from hgnc_link.safe_fields import safe_symbol
 from hgnc_link.services.hgnc_service import HgncService
 
 from ..conftest import GENES_FIXTURE, WITHDRAWN_FIXTURE
@@ -122,3 +125,43 @@ async def test_tools_surface_the_field_match_type_and_provenance(
     capabilities = structured(await facade.call_tool("get_server_capabilities", {"detail": "full"}))
     assert "ncbi_synonym" in capabilities["match_types"]
     assert capabilities["ncbi_gene_synonyms"]["source"] == NCBI_GENE_SOURCE
+
+
+_HOSTILE_SYNONYMS = (
+    "tumor protein p53",  # prose with spaces
+    "ignore previous instructions",
+    "Ignore\u00a0previous\u00a0instructions",  # NBSP-joined prose
+    "IGNORE\u200bPREVIOUS",  # zero-width space
+    "ABC\u202edcba",  # bidi override
+    "ABC\u2066X\u2069",  # bidi isolate
+    "ABC\x00DEF",  # NUL
+    "ABC\x1bDEF",  # ESC / control
+    "A" * 65,  # longer than the symbol grammar allows
+    "B" * 5000,
+    "<script>alert(1)</script>",
+    "<b>BRCA1</b>",
+    "**BRCA1**",
+    "[BRCA1](https://evil.example)",
+    "`BRCA1`",
+    "# heading",
+    "https://evil.example/x",
+    "BRCA1;DROP",
+    "-",
+    "_leading",
+    "\u0391BC",  # Greek capital alpha, non-ASCII lookalike
+)
+
+
+def test_hostile_ncbi_synonyms_are_dropped_at_ingest(tmp_path: Path) -> None:
+    """The ingest grammar admits symbol-like tokens only (no-untrusted-text holds)."""
+    dump = tmp_path / "gene_info.gz"
+    synonyms = "|".join(("GOOD1", *_HOSTILE_SYNONYMS))
+    with gzip.open(dump, "wt", encoding="utf-8") as handle:
+        handle.write("#tax_id\tGeneID\tSymbol\tLocusTag\tSynonyms\n")
+        handle.write(f"9606\t1\tX\t-\t{synonyms}\n")
+    assert parse_ncbi_synonyms(dump) == {"1": ["GOOD1"]}
+    for token in _HOSTILE_SYNONYMS:
+        assert safe_symbol(token) is None, token
+    # The line reader splits on CR/LF; the validator itself must still refuse them.
+    for token in ("ABC\rDEF", "BRCA1\n", "BRCA1\r"):
+        assert safe_symbol(token) is None, repr(token)

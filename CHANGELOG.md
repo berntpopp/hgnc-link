@@ -30,6 +30,13 @@ All notable changes to hgnc-link are documented here. The format follows
   after a new data release is published and re-pinned.
 - Requires data release for NCBI synonyms to appear.
 
+### Security
+
+- The `safe_fields` identifier grammars anchor with `\Z` instead of `$`, so a value with a
+  trailing newline no longer passes; a new test feeds hostile NCBI synonyms (prose,
+  injection phrases, bidi/zero-width/control code points, over-long, HTML/markdown, URLs)
+  and asserts each is dropped at ingest.
+
 ## [2.3.0] - 2026-11-18
 
 ### Changed
