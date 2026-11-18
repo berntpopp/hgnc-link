@@ -6,6 +6,19 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-11-18
+
+### Changed
+
+- Upgrade FastMCP 3.4 → 4.2.2 and MCP SDK 1.x → 2.x; supports the 2026-07-28 sessionless
+  protocol era alongside the legacy handshake.
+- Not-found reflection guard Layer 3 (protocol backstop) ported to the SDK 2 request-handler
+  API (`get_request_handler`/`add_request_handler`); resource/prompt dispatch failures still
+  return fixed, input-free messages, now as `MCPError` with code -32602.
+- Tool annotations use the SDK 2 snake_case fields; `httpx2`/`httpcore2` loggers are pinned
+  to WARNING like their httpx counterparts.
+- New test drives `server/discover` → `tools/list` → `tools/call` over the modern era.
+
 ## [2.2.2] - 2026-11-13
 
 ### Changed

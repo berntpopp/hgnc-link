@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any
 
+from fastmcp.tools import ToolResult
 from pydantic import Field
 
 from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
@@ -49,7 +50,7 @@ def register_group_tools(mcp: FastMCP) -> None:
             int, Field(ge=0, description="Skip this many members for pagination (default 0).")
         ] = 0,
         response_mode: ResponseMode = "compact",
-    ) -> dict[str, Any]:
+    ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().get_gene_group(
                 group, limit=limit, offset=offset, mode=response_mode
