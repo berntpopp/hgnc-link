@@ -35,9 +35,9 @@ _MUTABLE_TAGS = frozenset({"latest", "main", "master", "head", "stable", "curren
 # The one reviewed data release the init sidecar restores (a published
 # `data-hgnc-*` release of this repository). Change it only in a reviewed PR,
 # together with container-release.json (tests/test_data_release_identity.py).
-DATA_RELEASE_TAG = "data-hgnc-74d1fd0b58288e57"
-DATA_COMPRESSED_SHA256 = "70de24651ba6133cca4c3e1489bca0accd8ba119560ce7a44895dc594abae6e8"
-DATA_EXPANDED_SHA256 = "74d1fd0b58288e57abd6e2613f6b5df9ab5e2fcec461d21ce501ea138dbdea4c"
+DATA_RELEASE_TAG = "data-hgnc-d1c34e1547c96761"
+DATA_COMPRESSED_SHA256 = "7b7d80006fc519fe1e6b30fad4aee550b5fcfb91b5d907a550d2d998203e1fe0"
+DATA_EXPANDED_SHA256 = "d1c34e1547c96761de49f984e47a663e78c1a067dd6cbddba06a491f9014767c"
 
 
 class ImmutableDataRequirement(BaseModel):
