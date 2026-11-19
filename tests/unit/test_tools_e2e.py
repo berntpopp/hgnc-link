@@ -180,11 +180,37 @@ async def test_batch_tool(facade: Any, structured: Any) -> None:
     assert payload["unresolved_count"] == 2
 
 
-async def test_ensembl_id_to_resolve_hints_xref(facade: Any, structured: Any) -> None:
+async def test_resolve_symbol_accepts_ensembl_gene_id(facade: Any, structured: Any) -> None:
+    """#133: an Ensembl gene id resolves through the xref index; match_type names the id type."""
+    payload = structured(await facade.call_tool("resolve_symbol", {"query": "ENSG00000157764"}))
+    assert payload["success"] is True
+    assert payload["approved_symbol"] == "BRAF"
+    assert payload["match_type"] == "ensembl_gene_id"
+    assert payload["query"] == "ENSG00000157764"
+
+
+async def test_unknown_ensembl_id_is_not_found_without_xref_hint(
+    facade: Any, structured: Any
+) -> None:
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "ENSG00000999999"}))
-    assert payload["success"] is False
+    assert payload["error_code"] == "not_found"
     tools = [c["tool"] for c in payload["_meta"]["next_commands"]]
-    assert "resolve_gene_by_xref" in tools
+    assert "resolve_gene_by_xref" not in tools  # already tried; get_gene still hints it
+    payload = structured(await facade.call_tool("get_gene", {"query": "ENSG00000999999"}))
+    assert "resolve_gene_by_xref" in [c["tool"] for c in payload["_meta"]["next_commands"]]
+
+
+async def test_batch_translates_ensembl_ids_and_lists_unmatched(
+    facade: Any, structured: Any
+) -> None:
+    """#133: a list of ids is one call, one row per input, misses listed (not a failed call)."""
+    ids = ["ENSG00000157764", "ENSG99999999999", "ENSG00000141510.17", "TP53"]
+    payload = structured(await facade.call_tool("resolve_symbols_batch", {"queries": ids}))
+    assert payload["success"] is True
+    assert [r["query"] for r in payload["results"]] == ids
+    assert [r.get("approved_symbol") for r in payload["results"]] == ["BRAF", None, "TP53", "TP53"]
+    assert payload["unresolved_queries"] == ["ENSG99999999999"]
+    assert (payload["resolved_count"], payload["unresolved_count"]) == (3, 1)
 
 
 async def test_resolve_ambiguous_is_structured_error(facade: Any, structured: Any) -> None:

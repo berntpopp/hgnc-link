@@ -67,8 +67,8 @@ proxy requires adding the public hostname to the exact Host allowlist — read
 
 | Tool | Purpose |
 |------|---------|
-| `resolve_symbol` | **Start here.** Any symbol/ID → `{hgnc_id, approved_symbol, match_type}` + candidates. |
-| `resolve_symbols_batch` | Resolve many symbols/IDs at once; never fails the batch on a miss. |
+| `resolve_symbol` | **Start here.** Any symbol, HGNC ID or Ensembl gene / RefSeq / UniProt ID → `{hgnc_id, approved_symbol, match_type}` + candidates. |
+| `resolve_symbols_batch` | Resolve or translate many symbols/IDs (e.g. a list of Ensembl gene IDs) in one call; never fails the batch on a miss. |
 | `get_gene` | Full HGNC record for one gene (alias- and previous-symbol aware). |
 | `search_genes` | Full-text search over symbol, name, alias and previous symbols. |
 | `get_gene_cross_references` | Gene → NCBI / Ensembl / UniProt / RefSeq / MANE / OMIM / … identifiers. |

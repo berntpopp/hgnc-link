@@ -235,3 +235,15 @@ def test_ambiguous_alias(service: HgncService) -> None:
     assert len(exc.value.candidates) == 2
     with pytest.raises(AmbiguousQueryError):
         service.get_gene("DUPE")
+
+
+def test_resolve_external_id_names_matched_id_type(service: HgncService) -> None:
+    """#133: id-shaped queries resolve via the xref index; bare numbers stay HGNC ids."""
+    assert service.resolve("ENSG00000157764.15")["match_type"] == "ensembl_gene_id"
+    assert service.resolve("P15056")["approved_symbol"] == "BRAF"
+    assert service.resolve("P15056")["match_type"] == "uniprot_ids"
+    mane = service.resolve("NM_024426.6")
+    assert (mane["approved_symbol"], mane["match_type"]) == ("WT1", "mane_select")
+    assert service.resolve("1097")["match_type"] == "hgnc_id"
+    with pytest.raises(NotFoundError):
+        service.resolve("ENSG00000999999")

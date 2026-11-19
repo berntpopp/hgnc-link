@@ -40,7 +40,8 @@ def default_error_next_commands(
         if value and looks_like_symbol(value):
             # infer_xref_source matches on a prefix, so it is gated behind the
             # anchored symbol grammar above (which forbids whitespace/prose).
-            source = infer_xref_source(value)
+            # resolve_symbol already tried the xref lookup itself (#133).
+            source = infer_xref_source(value) if tool == "get_gene" else None
             if source:
                 return [
                     cmd("resolve_gene_by_xref", source=source, value=value),

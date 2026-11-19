@@ -11,7 +11,7 @@ from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from hgnc_link.mcp.envelope import McpErrorContext, run_mcp_tool
 from hgnc_link.mcp.next_commands import after_resolve, cmd
 from hgnc_link.mcp.service_adapters import get_hgnc_service
-from hgnc_link.mcp.tools._common import QueryStr, ResponseMode
+from hgnc_link.mcp.tools._common import ResponseMode
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
@@ -27,21 +27,33 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         output_schema=None,
         tags={"resolve"},
         description=(
-            "Resolve any gene symbol or HGNC id to its canonical record. Accepts a "
-            "current symbol, a previous (withdrawn) symbol, an alias, an NCBI Gene "
-            "synonym HGNC does not list, or an HGNC id in either form (HGNC:1100 or "
-            "1100), case-insensitively. Returns {hgnc_id, approved_symbol, name, status, "
+            "Resolve any gene symbol, HGNC id or external gene id to its canonical record. "
+            "Accepts a current symbol, a previous (withdrawn) symbol, an alias, an NCBI Gene "
+            "synonym HGNC does not list, an HGNC id in either form (HGNC:1100 or "
+            "1100), or an Ensembl gene id (ENSG00000157764), RefSeq accession or UniProt "
+            "accession, case-insensitively. Returns {hgnc_id, approved_symbol, name, status, "
             "locus_type, location, match_type (hgnc_id|current|previous|alias|"
-            "ncbi_synonym)}; location is the cytogenetic band (chromosome location, "
-            "e.g. 3p24.3). ncbi_synonym means only "
+            "ncbi_synonym|ensembl_gene_id|refseq_accession|mane_select|uniprot_ids)}; an "
+            "id-type match_type names the external id type that matched; location is the "
+            "cytogenetic band (chromosome location, e.g. 3p24.3). ncbi_synonym means only "
             "NCBI Gene (not HGNC) knows the symbol, and it ranks below every HGNC match. "
+            "For a list of symbols or ids use resolve_symbols_batch (one call). "
             "An alias or synonym shared by several genes returns an ambiguous_query error with "
             "the candidate list (not silently picked); a withdrawn/merged symbol "
             "returns a not_found error that redirects to the successor record."
         ),
     )
     async def resolve_symbol(
-        query: QueryStr, response_mode: ResponseMode = "compact"
+        query: Annotated[
+            str,
+            Field(
+                description="A gene symbol (current/previous/alias, case-insensitive), an HGNC "
+                "id (HGNC:1100 or 1100; a bare number is always an HGNC id), or an Ensembl "
+                "gene id, RefSeq accession or UniProt accession.",
+                examples=["BRAF", "HGNC:1097", "MLL2", "1100", "ENSG00000157764"],
+            ),
+        ],
+        response_mode: ResponseMode = "compact",
     ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().resolve(query, response_mode)
@@ -61,11 +73,14 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         output_schema=None,
         tags={"resolve"},
         description=(
-            "Resolve a batch of gene symbols / HGNC ids in one call (max 200). Each "
-            "entry is resolved with the same current->previous->alias->ncbi_synonym cascade as "
-            "resolve_symbol; an individual miss or withdrawal never fails the batch "
-            "(it is marked unresolved / obsolete in that entry). Returns per-query "
-            "results plus resolved/unresolved counts. "
+            "Resolve or translate a batch of gene symbols, HGNC ids and/or external gene ids "
+            "(Ensembl gene ids, RefSeq, UniProt) in one call (max 200), e.g. a list of ENSG "
+            "ids -> HGNC symbols. Each "
+            "entry is resolved exactly like resolve_symbol; an individual miss or "
+            "withdrawal never fails the batch (it is marked unresolved / obsolete in that "
+            "entry). Returns one row per input in input order (each keeps its input as "
+            "query, with approved_symbol, hgnc_id, match_type), resolved/unresolved counts, "
+            "and unresolved_queries (the inputs with no single match). "
             "Signature: resolve_symbols_batch(queries, response_mode=)."
         ),
     )
@@ -74,8 +89,9 @@ def register_resolve_tools(mcp: FastMCP) -> None:
             list[str],
             Field(
                 max_length=200,
-                description="Gene symbols and/or HGNC ids to resolve (max 200).",
-                examples=[["BRCA1", "TP53", "HGNC:1100"]],
+                description="Gene symbols, HGNC ids and/or Ensembl gene / RefSeq / UniProt "
+                "ids to resolve (max 200).",
+                examples=[["BRCA1", "TP53", "HGNC:1100"], ["ENSG00000157764", "ENSG00000141510"]],
             ),
         ],
         response_mode: ResponseMode = "compact",

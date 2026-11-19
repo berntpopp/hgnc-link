@@ -7,7 +7,7 @@
 | `get_server_capabilities` | Cold-start discovery — tools, signatures, workflows, vocab. |
 | `get_hgnc_diagnostics` | Confirm the loaded HGNC release and that data is built. |
 | `resolve_symbol` | **Start here.** Any symbol/ID → canonical `{hgnc_id, approved_symbol, match_type}`. |
-| `resolve_symbols_batch` | Resolve many symbols/IDs at once. |
+| `resolve_symbols_batch` | Resolve or translate many symbols/IDs (e.g. Ensembl gene IDs) in one call. |
 | `get_gene` | Full record for one gene (alias/previous aware). |
 | `search_genes` | Free-text / partial search. |
 | `get_gene_cross_references` | Gene → external DB IDs (NCBI/Ensembl/UniProt/RefSeq/MANE/OMIM/…). |
@@ -46,6 +46,9 @@ get_gene_cross_references(query="HGNC:1097")
 
 **External ID → gene**
 ```
+resolve_symbol(query="ENSG00000157764") → {approved_symbol: BRAF, match_type: ensembl_gene_id}
+resolve_symbols_batch(queries=["ENSG00000157764","ENSG00000141510","ENSG99999999999"])
+→ one row per input (BRAF, TP53, unresolved) + unresolved_queries: [ENSG99999999999]
 resolve_gene_by_xref(source="ensembl_gene_id", value="ENSG00000157764") → BRAF
 resolve_gene_by_xref(source="entrez_id", value="7157") → TP53
 ```
