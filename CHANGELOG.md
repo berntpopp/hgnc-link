@@ -6,6 +6,15 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.1] - 2026-11-19
+
+### Fixed
+
+- `resolve_symbol` description now lists every field it returns (`name`, `status`,
+  `locus_type`, `location`), and says `location` is the cytogenetic band (chromosome
+  location); `get_gene` says the same. A contract test checks every field the
+  description names is actually returned (#128).
+
 ## [2.4.0] - 2026-11-18
 
 ### Added

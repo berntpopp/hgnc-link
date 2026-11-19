@@ -192,3 +192,16 @@ async def test_resolve_ambiguous_is_structured_error(facade: Any, structured: An
     assert len(payload["candidates"]) == 2
     assert payload["recovery_action"] == "reformulate_input"
     assert payload["_meta"]["next_commands"][0]["tool"] == "get_gene"
+
+
+async def test_resolve_description_names_only_returned_fields(facade: Any, structured: Any) -> None:
+    """Contract truth (#128): every field the description's Returns {...} names is returned."""
+    import re
+
+    tool = next(t for t in await facade.list_tools() if t.name == "resolve_symbol")
+    returns = re.search(r"Returns \{([^}]*)\}", tool.description or "")
+    assert returns is not None
+    named = re.findall(r"(?:^|,)\s*([a-z_]+)", returns.group(1))
+    assert {"location", "name", "locus_type"} <= set(named)
+    payload = structured(await facade.call_tool("resolve_symbol", {"query": "BRAF"}))
+    assert set(named) <= payload.keys()

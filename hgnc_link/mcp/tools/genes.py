@@ -30,7 +30,7 @@ def register_gene_tools(mcp: FastMCP) -> None:
         description=(
             "Return the full HGNC record for a gene, resolved from an HGNC id, "
             "current symbol, previous symbol, or alias. Includes name, status, "
-            "locus group/type, location, aliases/previous symbols, gene groups, and "
+            "locus group/type, location (cytogenetic band), aliases/previous symbols, gene groups, and "
             "all cross-references. For a complete alias list read alias_symbol + "
             "prev_symbol (HGNC) AND ncbi_gene_synonyms (NCBI Gene's own synonyms, kept "
             "separate; may repeat or extend HGNC's). response_mode controls verbosity (compact drops "
