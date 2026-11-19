@@ -48,7 +48,8 @@ freshness), `deployment.md` (cron/systemd/Docker), `architecture.md`, `usage.md`
 - **Every typed tool declares `output_schema`** (`mcp/schemas.py`) and
   `annotations=READ_ONLY_OPEN_WORLD`. A test asserts this.
 - **Tool description first sentence is the discovery summary;** end it with an
-  explicit `Signature: tool(args...)`.
+  explicit `Signature: tool(args...)` (except the pinned `resolve_symbol`, kept short
+  because the router lists it on every turn).
 - **Argument aliases** live in `mcp/arg_help.py`; the middleware applies them and
   reshapes binding errors. Keep `capabilities.TOOLS` in sync with registered tools
   (a test asserts `tool_count == len(TOOLS)`).

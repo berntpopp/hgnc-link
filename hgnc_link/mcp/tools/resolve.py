@@ -37,8 +37,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
             "NCBI Gene (not HGNC) knows the symbol, and it ranks below every HGNC match. "
             "An alias or synonym shared by several genes returns an ambiguous_query error with "
             "the candidate list (not silently picked); a withdrawn/merged symbol "
-            "returns a not_found error that redirects to the successor record. "
-            "Signature: resolve_symbol(query, response_mode=)."
+            "returns a not_found error that redirects to the successor record."
         ),
     )
     async def resolve_symbol(
