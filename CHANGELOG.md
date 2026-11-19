@@ -6,6 +6,10 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.3] - 2026-11-19
+
+- Re-pin the data release to `data-hgnc-d1c34e1547c96761` (HGNC 2026-11-13 + NCBI Gene synonyms, so `ncbi_synonym` matches are served by the container).
+
 ## [2.4.2] - 2026-11-19
 
 - Tool descriptions lead with what each tool returns (D1, Tool-Schema Documentation v1.1).

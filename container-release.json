@@ -30,8 +30,8 @@
   },
   "data": {
     "mode": "external-reference",
-    "release_tag": "data-hgnc-74d1fd0b58288e57",
-    "digest": "sha256:70de24651ba6133cca4c3e1489bca0accd8ba119560ce7a44895dc594abae6e8",
+    "release_tag": "data-hgnc-d1c34e1547c96761",
+    "digest": "sha256:7b7d80006fc519fe1e6b30fad4aee550b5fcfb91b5d907a550d2d998203e1fe0",
     "schema_compatibility": [
       "1"
     ],
