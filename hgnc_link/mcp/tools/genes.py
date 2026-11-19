@@ -59,9 +59,9 @@ def register_gene_tools(mcp: FastMCP) -> None:
         output_schema=None,
         tags={"gene"},
         description=(
-            "Free-text search over gene symbols, names, aliases, and previous "
-            "symbols (FTS, relevance-ranked). Returns ranked {hgnc_id, symbol, name, "
-            "locus_type, score} summaries. Nomenclature-only: there is NO "
+            "Search gene symbols, names, aliases, and previous symbols by free text "
+            "(FTS); returns relevance-ranked {hgnc_id, symbol, name, locus_type, score} "
+            "gene summaries. Nomenclature-only: there is NO "
             "disease/phenotype semantics, so a descriptive query (e.g. 'polycystin "
             "kidney') only matches words present in a gene's nomenclature. Use "
             "resolve_symbol for an exact symbol/id; use this for partial names. "

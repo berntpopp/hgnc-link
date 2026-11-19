@@ -28,8 +28,9 @@ def register_xref_tools(mcp: FastMCP) -> None:
         output_schema=None,
         tags={"xref"},
         description=(
-            "Reverse identifier mapping: find the HGNC gene(s) for an external "
-            "database id. source is the database (entrez_id/ncbi, ensembl_gene_id, "
+            "Find the HGNC gene(s) for an external database id (reverse identifier "
+            "mapping); returns the matching gene summaries (hgnc_id, symbol, name). "
+            "source is the database (entrez_id/ncbi, ensembl_gene_id, "
             "uniprot, refseq, mane_select, omim, ucsc, vega, ccds, mgi, rgd) and value "
             "is the id (e.g. source='ensembl_gene_id', value='ENSG00000157764'). A "
             "version suffix is tolerated (ENSG00000012048.23 resolves like "

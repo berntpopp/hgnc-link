@@ -6,6 +6,10 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.4.2] - 2026-11-19
+
+- Tool descriptions lead with what each tool returns (D1, Tool-Schema Documentation v1.1).
+
 ## [2.4.1] - 2026-11-19
 
 ### Fixed

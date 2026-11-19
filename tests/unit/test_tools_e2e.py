@@ -124,6 +124,8 @@ async def test_resolve_gene_by_xref_tool(facade: Any, structured: Any) -> None:
         )
     )
     assert payload["results"][0]["symbol"] == "BRAF"
+    # Contract truth (D1): the description lead names hgnc_id, symbol, name.
+    assert {"hgnc_id", "symbol", "name"} <= payload["results"][0].keys()
 
 
 async def test_resolve_gene_by_xref_unknown_source(facade: Any, structured: Any) -> None:
