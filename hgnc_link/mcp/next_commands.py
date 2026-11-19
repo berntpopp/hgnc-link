@@ -71,10 +71,12 @@ def after_resolve(resolution: dict[str, Any]) -> list[dict[str, Any]]:
     hgnc_id = resolution.get("hgnc_id")
     if not is_canonical_hgnc_id(hgnc_id):
         return _search_or_capabilities(str(resolution.get("query", "")))
-    return [
-        cmd("get_gene", query=hgnc_id),
-        cmd("get_gene_cross_references", query=hgnc_id),
-    ]
+    chain = [cmd("get_gene", query=hgnc_id), cmd("get_gene_cross_references", query=hgnc_id)]
+    query = str(resolution.get("query", ""))
+    if resolution.get("match_type") == "hgnc_id" and query.isdigit():
+        # A bare number is read as an HGNC id; offer the NCBI Gene reading explicitly.
+        chain.append(cmd("resolve_gene_by_xref", source="entrez_id", value=query))
+    return chain
 
 
 def after_get_gene(gene: dict[str, Any]) -> list[dict[str, Any]]:

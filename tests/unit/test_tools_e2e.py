@@ -189,6 +189,35 @@ async def test_resolve_symbol_accepts_ensembl_gene_id(facade: Any, structured: A
     assert payload["query"] == "ENSG00000157764"
 
 
+async def test_resolve_description_points_to_batch_right_after_lead(facade: Any) -> None:
+    tool = next(t for t in await facade.list_tools() if t.name == "resolve_symbol")
+    second = (tool.description or "").split(". ")[1]
+    assert second.startswith("For 2 or more genes, call resolve_symbols_batch once")
+    batch = next(t for t in await facade.list_tools() if t.name == "resolve_symbols_batch")
+    for word in ("Ensembl gene ids", "ENSG00000157764", "RefSeq", "UniProt"):
+        assert word in (batch.description or "")
+
+
+async def test_bare_number_says_it_was_read_as_hgnc_id(facade: Any, structured: Any) -> None:
+    """A bare number is an HGNC id; the result says so and offers the NCBI Gene reading."""
+    for mode in ("minimal", "compact", "full"):
+        payload = structured(
+            await facade.call_tool("resolve_symbol", {"query": "1097", "response_mode": mode})
+        )
+        assert payload["match_type"] == "hgnc_id"
+        assert "HGNC id, NOT an NCBI Gene id" in payload["note"]
+        assert payload["_meta"]["next_commands"][-1] == {
+            "tool": "resolve_gene_by_xref",
+            "arguments": {"source": "entrez_id", "value": "1097"},
+        }
+    for query in ("HGNC:1097", "BRAF"):  # unambiguous forms carry neither
+        payload = structured(await facade.call_tool("resolve_symbol", {"query": query}))
+        assert "note" not in payload
+        assert len(payload["_meta"]["next_commands"]) == 2
+    batch = structured(await facade.call_tool("resolve_symbols_batch", {"queries": ["1097"]}))
+    assert "note" in batch["results"][0]
+
+
 async def test_unknown_ensembl_id_is_not_found_without_xref_hint(
     facade: Any, structured: Any
 ) -> None:

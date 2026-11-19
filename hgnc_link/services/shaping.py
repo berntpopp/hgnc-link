@@ -62,7 +62,7 @@ _PRESERVE_KEYS: frozenset[str] = frozenset({"_meta", "success"})
 
 # Fields kept in minimal mode for a resolve_symbol success payload.
 _RESOLUTION_MINIMAL: frozenset[str] = frozenset(
-    {"query", "hgnc_id", "approved_symbol", "match_type"}
+    {"query", "hgnc_id", "approved_symbol", "match_type", "note"}
 )
 
 

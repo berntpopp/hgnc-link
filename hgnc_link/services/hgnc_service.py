@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from hgnc_link.constants import (
+    BARE_NUMBER_NOTE,
     NCBI_SYNONYM_MATCH,
     VERSIONED_XREF_FIELDS,
     XREF_FIELDS,
@@ -125,7 +126,6 @@ class HgncService:
         if hgnc_id:
             return self._resolution(raw, self._gene_by_id(hgnc_id), "hgnc_id", mode=mode)
         reject_malformed_hgnc_id(raw)
-
         pairs = self._lookup_symbol(raw)
         if pairs:
             return self._resolve_symbol_pairs(raw, pairs, mode)
@@ -210,6 +210,7 @@ class HgncService:
             "location": gene.get("location"),
             "match_type": match_type,
             "ambiguous": False,
+            **({"note": BARE_NUMBER_NOTE} if match_type == "hgnc_id" and raw.isdigit() else {}),
         }
         if other_matches:
             record["other_matches"] = [

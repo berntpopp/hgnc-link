@@ -17,6 +17,11 @@ All notable changes to hgnc-link are documented here. The format follows
 - `resolve_symbols_batch` therefore translates a list of external ids in one call (one
   row per input, each keeping its `query`), and now returns `unresolved_queries`, the
   inputs with no single match (#133).
+- The `resolve_symbol` description tells callers, right after its first sentence, to call
+  `resolve_symbols_batch` once for 2 or more genes instead of once per gene.
+- A bare number is still read as an HGNC id, and the result now says so: it carries a
+  `note` (in every `response_mode`, also on batch rows), and `next_commands` adds
+  `resolve_gene_by_xref(source="entrez_id", value=<the number>)` for the NCBI Gene reading.
 
 ### Changed
 

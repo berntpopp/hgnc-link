@@ -28,6 +28,8 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         tags={"resolve"},
         description=(
             "Resolve any gene symbol, HGNC id or external gene id to its canonical record. "
+            "For 2 or more genes, call resolve_symbols_batch once (up to 200, same accepted "
+            "forms) instead of calling this tool per gene. "
             "Accepts a current symbol, a previous (withdrawn) symbol, an alias, an NCBI Gene "
             "synonym HGNC does not list, an HGNC id in either form (HGNC:1100 or "
             "1100), or an Ensembl gene id (ENSG00000157764), RefSeq accession or UniProt "
@@ -37,7 +39,9 @@ def register_resolve_tools(mcp: FastMCP) -> None:
             "id-type match_type names the external id type that matched; location is the "
             "cytogenetic band (chromosome location, e.g. 3p24.3). ncbi_synonym means only "
             "NCBI Gene (not HGNC) knows the symbol, and it ranks below every HGNC match. "
-            "For a list of symbols or ids use resolve_symbols_batch (one call). "
+            "A bare number is always read as an HGNC id, never an NCBI Gene id: the result "
+            "then carries a note, and next_commands offers resolve_gene_by_xref("
+            "source='entrez_id'). "
             "An alias or synonym shared by several genes returns an ambiguous_query error with "
             "the candidate list (not silently picked); a withdrawn/merged symbol "
             "returns a not_found error that redirects to the successor record."
@@ -74,8 +78,9 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         tags={"resolve"},
         description=(
             "Resolve or translate a batch of gene symbols, HGNC ids and/or external gene ids "
-            "(Ensembl gene ids, RefSeq, UniProt) in one call (max 200), e.g. a list of ENSG "
-            "ids -> HGNC symbols. Each "
+            "in one call (max 200). Accepts Ensembl gene ids (e.g. ENSG00000157764), RefSeq "
+            "accessions and UniProt accessions, so a list of ENSG ids -> HGNC symbols is one "
+            "call. Each "
             "entry is resolved exactly like resolve_symbol; an individual miss or "
             "withdrawal never fails the batch (it is marked unresolved / obsolete in that "
             "entry). Returns one row per input in input order (each keeps its input as "
