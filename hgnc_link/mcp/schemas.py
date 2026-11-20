@@ -81,6 +81,7 @@ RESOLVE_BATCH_SCHEMA = _envelope(
     query_count=_INT,
     resolved_count=_INT,
     unresolved_count=_INT,
+    unresolved_queries=_ARR,
     results=_ARR,
 )
 

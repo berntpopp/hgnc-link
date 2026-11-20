@@ -6,6 +6,31 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-20
+
+### Added
+
+- `resolve_symbol`, `get_gene` and `get_gene_cross_references` resolve an Ensembl gene id,
+  RefSeq accession, UniProt accession or `NCBIGene:<n>` CURIE through the cross-reference
+  index instead of returning `not_found`; `match_type` names the id type that matched
+  (`ensembl_gene_id`, `entrez_id`, `refseq_accession`, `mane_select`, `uniprot_ids`). A
+  symbol match still wins, and a bare number is still an HGNC id (#133). All id forms are
+  case-insensitive.
+- `resolve_symbols_batch` therefore translates a list of external ids in one call (one
+  row per input, each keeping its `query`), and now returns `unresolved_queries`, the
+  inputs with no single match (#133).
+- The `resolve_symbol` description tells callers, right after its first sentence, to call
+  `resolve_symbols_batch` once for 2 or more genes instead of once per gene.
+- A bare number is still read as an HGNC id, and the result now says so: it carries a
+  `note` (in every `response_mode`, also on batch rows), and `next_commands` adds
+  `resolve_gene_by_xref(source="entrez_id", value=<the number>)` for the NCBI Gene reading.
+
+### Changed
+
+- An unresolved `resolve_symbols_batch` row no longer carries a `hint` pointing to
+  `resolve_gene_by_xref`, and a `resolve_symbol` / `get_gene` miss no longer suggests it
+  in `next_commands`: that lookup has already been tried.
+
 ## [2.4.3] - 2026-11-19
 
 - Re-pin the data release to `data-hgnc-d1c34e1547c96761` (HGNC 2026-11-13 + NCBI Gene synonyms, so `ncbi_synonym` matches are served by the container).

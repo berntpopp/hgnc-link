@@ -29,7 +29,8 @@ def register_gene_tools(mcp: FastMCP) -> None:
         tags={"gene"},
         description=(
             "Return the full HGNC record for a gene, resolved from an HGNC id, "
-            "current symbol, previous symbol, or alias. Includes name, status, "
+            "current symbol, previous symbol, alias, or an external gene id (Ensembl gene id, "
+            "RefSeq / UniProt accession, NCBIGene:<n>) exactly like resolve_symbol. Includes name, status, "
             "locus group/type, location (cytogenetic band), aliases/previous symbols, gene groups, and "
             "all cross-references. For a complete alias list read alias_symbol + "
             "prev_symbol (HGNC) AND ncbi_gene_synonyms (NCBI Gene's own synonyms, kept "
@@ -105,8 +106,9 @@ def register_gene_tools(mcp: FastMCP) -> None:
             "standard/full=every populated field. databases optionally filters to "
             "specific sources by field key OR friendly label (e.g. 'mane', 'ncbi', "
             "'uniprot') and OVERRIDES the response_mode tier; an unknown key is "
-            "rejected with invalid_input + did-you-mean. Resolve the gene from an "
-            "id/symbol/alias first. "
+            "rejected with invalid_input + did-you-mean. query takes the same forms as "
+            "resolve_symbol (symbol, HGNC id, Ensembl gene id, RefSeq / UniProt accession, "
+            "NCBIGene:<n>). "
             "Signature: get_gene_cross_references(query, databases=, response_mode=)."
         ),
     )

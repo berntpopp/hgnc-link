@@ -209,6 +209,12 @@ STATUS_VALUES: tuple[str, ...] = (
     "Merged/Split",
 )
 
+#: Attached to a resolution whose query was a bare number (always read as an HGNC id).
+BARE_NUMBER_NOTE = (
+    "Bare number interpreted as an HGNC id, NOT an NCBI Gene id. If you meant an NCBI "
+    "Gene (Entrez) id, call resolve_gene_by_xref(source='entrez_id', value=<the number>)."
+)
+
 #: Match-type provenance returned by resolve_symbol.
 MATCH_TYPES: tuple[str, ...] = (
     "hgnc_id",
@@ -216,6 +222,12 @@ MATCH_TYPES: tuple[str, ...] = (
     "previous",
     "alias",
     NCBI_SYNONYM_MATCH,
+    # An external id given to resolve_symbol: the xref field that matched (#133).
+    "ensembl_gene_id",
+    "entrez_id",
+    "refseq_accession",
+    "mane_select",
+    "uniprot_ids",
     "withdrawn",
 )
 

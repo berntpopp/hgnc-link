@@ -13,9 +13,10 @@ _HGNC_ID_RE = re.compile(r"^HGNC:(\d+)$", re.IGNORECASE)
 _BARE_ID_RE = re.compile(r"^\d+$")
 _SYMBOL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._@/-]{0,63}$")
 
-# External-identifier shapes recognised so resolve_* can redirect to resolve_gene_by_xref.
+# External-identifier shapes the resolver family resolves through the xref index.
 # Only ids the reverse lookup can actually resolve are mapped (ENST transcripts,
 # which the gene-id index cannot match, deliberately return None).
+_NCBI_GENE_CURIE_RE = re.compile(r"^NCBIGene:\d+$", re.IGNORECASE)
 _ENSG_RE = re.compile(r"^ENSG\d{6,}", re.IGNORECASE)
 _REFSEQ_RE = re.compile(r"^(NM_|NP_|NR_|XM_|XP_|NG_)\d+", re.IGNORECASE)
 _UNIPROT_RE = re.compile(
@@ -93,14 +94,16 @@ def looks_like_symbol(value: str) -> bool:
 def infer_xref_source(value: str) -> str | None:
     """Map an external-id-shaped string to a ``resolve_gene_by_xref`` source, or ``None``.
 
-    Lets a symbol-resolution miss redirect the caller to the reverse-mapping tool
-    (e.g. an Ensembl gene id thrown at ``resolve_symbol`` -> ``resolve_gene_by_xref``).
+    Lets a symbol-resolution miss fall back to the reverse mapping (an Ensembl gene id,
+    RefSeq / UniProt accession or ``NCBIGene:<n>`` CURIE given where a symbol is expected).
     """
     text = (value or "").strip()
+    if _NCBI_GENE_CURIE_RE.match(text):  # the lookup value is the part after the colon
+        return "entrez_id"
     if _ENSG_RE.match(text):
         return "ensembl_gene_id"
     if _REFSEQ_RE.match(text):
         return "refseq"
-    if _UNIPROT_RE.match(text):
+    if _UNIPROT_RE.match(text.upper()):  # accessions are upper-case; accept any case
         return "uniprot"
     return None

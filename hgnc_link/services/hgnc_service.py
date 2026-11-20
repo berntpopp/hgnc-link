@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from hgnc_link.constants import (
+    BARE_NUMBER_NOTE,
     NCBI_SYNONYM_MATCH,
     VERSIONED_XREF_FIELDS,
     XREF_FIELDS,
@@ -120,17 +121,46 @@ class HgncService:
         raw = (query or "").strip()
         if not raw:
             raise InvalidInputError("query must be a non-empty symbol or HGNC ID.", field="query")
+        gene, match_type, pairs = self._resolve_to_gene(raw)
+        # Lower-tier matches point at *other* genes the caller might have meant.
+        seen = {gene.get("hgnc_id")}
+        others: list[dict[str, Any]] = []
+        for hid, stype in pairs:
+            if hid in seen:
+                continue
+            seen.add(hid)
+            others.append(_brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, stype))
+            if len(others) >= _MAX_CANDIDATES:
+                break
+        return self._resolution(raw, gene, match_type, other_matches=others, mode=mode)
 
+    def _resolve_to_gene(self, raw: str) -> tuple[dict[str, Any], str, list[tuple[str, str]]]:
+        """The one resolver path: ``(gene, match_type, symbol lookup rows)`` or a typed error."""
         hgnc_id = normalize_hgnc_id(raw)
         if hgnc_id:
-            return self._resolution(raw, self._gene_by_id(hgnc_id), "hgnc_id", mode=mode)
+            return self._gene_by_id(hgnc_id), "hgnc_id", []
         reject_malformed_hgnc_id(raw)
-
         pairs = self._lookup_symbol(raw)
-        if pairs:
-            return self._resolve_symbol_pairs(raw, pairs, mode)
+        if not pairs:
+            return (*self._resolve_miss(raw), [])
+        best_type = pairs[0][1]
+        best = [p for p in pairs if p[1] == best_type]
+        if len(best) > 1:
+            raise self._ambiguity_error(raw, best_type, best)
+        gene = self.repo.get_gene(best[0][0])
+        if gene is None:  # pragma: no cover - index integrity
+            raise NotFoundError(f"No HGNC record for {best[0][0]}.")
+        return gene, best_type, pairs
 
+    def _resolve_miss(self, raw: str) -> tuple[dict[str, Any], str]:
+        """No symbol matched: withdrawn redirect, then an external id (#133), else not_found."""
         self._raise_for_withdrawn_symbol(raw)
+        source = infer_xref_source(raw)
+        if source:  # Ensembl gene / RefSeq / UniProt id, or NCBIGene:<n> (value after the colon)
+            field, ids = self._xref_ids(XREF_SOURCE_ALIASES[source], raw.rsplit(":", 1)[-1])
+            if len(ids) > 1:
+                raise self._xref_ambiguity(raw, ids)
+            return self._gene_by_id(ids[0]), field
         raise NotFoundError(f"No HGNC record matches '{raw}'.")
 
     def _lookup_symbol(self, raw: str) -> list[tuple[str, str]]:
@@ -163,28 +193,6 @@ class HgncService:
             candidates=candidates,
         )
 
-    def _resolve_symbol_pairs(
-        self, raw: str, pairs: list[tuple[str, str]], mode: str
-    ) -> dict[str, Any]:
-        best_type = pairs[0][1]
-        best = [p for p in pairs if p[1] == best_type]
-        if len(best) > 1:
-            raise self._ambiguity_error(raw, best_type, best)
-        gene = self.repo.get_gene(best[0][0])
-        if gene is None:  # pragma: no cover - index integrity
-            raise NotFoundError(f"No HGNC record for {best[0][0]}.")
-        # Lower-tier matches point at *other* genes the caller might have meant.
-        seen = {gene.get("hgnc_id")}
-        others: list[dict[str, Any]] = []
-        for hid, stype in pairs:
-            if hid in seen:
-                continue
-            seen.add(hid)
-            others.append(_brief(self.repo.get_gene(hid) or {"hgnc_id": hid}, stype))
-            if len(others) >= _MAX_CANDIDATES:
-                break
-        return self._resolution(raw, gene, best_type, other_matches=others, mode=mode)
-
     def _resolution(
         self,
         raw: str,
@@ -204,6 +212,7 @@ class HgncService:
             "location": gene.get("location"),
             "match_type": match_type,
             "ambiguous": False,
+            **({"note": BARE_NUMBER_NOTE} if match_type == "hgnc_id" and raw.isdigit() else {}),
         }
         if other_matches:
             record["other_matches"] = [
@@ -237,13 +246,9 @@ class HgncService:
                 hint=f"Split into batches of <= {_MAX_BATCH}.",
             )
         results: list[dict[str, Any]] = []
-        resolved = 0
         for query in queries:
             try:
-                res = self.resolve(query, mode)
-                if res.get("hgnc_id"):
-                    resolved += 1
-                results.append(res)
+                results.append(self.resolve(query, mode))
             except WithdrawnEntryError as exc:
                 # query -> code-point-stripped correlation key; status -> closed enum;
                 # replaced_by -> validated ids only (never copy exception prose).
@@ -270,54 +275,35 @@ class HgncService:
                     }
                 )
             except (NotFoundError, InvalidInputError) as exc:
-                entry: dict[str, Any] = {
-                    "query": strip_forbidden(query),
-                    "hgnc_id": None,
-                    "unresolved": True,
-                    "reason": (  # fixed typed classification, never str(exc)
-                        _BATCH_INVALID_REASON
-                        if isinstance(exc, InvalidInputError)
-                        else _BATCH_NOT_FOUND_REASON
-                    ),
-                }
-                source = infer_xref_source(query)
-                if source:
-                    entry["hint"] = (
-                        f"Looks like a {source} id; try resolve_gene_by_xref(source='{source}')."
-                    )
-                results.append(entry)
+                results.append(
+                    {
+                        "query": strip_forbidden(query),
+                        "hgnc_id": None,
+                        "unresolved": True,
+                        "reason": (  # fixed typed classification, never str(exc)
+                            _BATCH_INVALID_REASON
+                            if isinstance(exc, InvalidInputError)
+                            else _BATCH_NOT_FOUND_REASON
+                        ),
+                    }
+                )
+        unresolved = [r["query"] for r in results if not r.get("hgnc_id")]
         return {
             "query_count": len(queries),
-            "resolved_count": resolved,
-            "unresolved_count": len(queries) - resolved,
+            "resolved_count": len(queries) - len(unresolved),
+            "unresolved_count": len(unresolved),
+            "unresolved_queries": unresolved,
             "results": results,
         }
 
     # -- records ---------------------------------------------------------------
-
-    def _resolve_to_gene(self, raw: str) -> tuple[dict[str, Any], str]:
-        hgnc_id = normalize_hgnc_id(raw)
-        if hgnc_id:
-            return self._gene_by_id(hgnc_id), "hgnc_id"
-        reject_malformed_hgnc_id(raw)
-        pairs = self._lookup_symbol(raw)
-        if pairs:
-            best_type = pairs[0][1]
-            best = [p for p in pairs if p[1] == best_type]
-            if len(best) > 1:
-                raise self._ambiguity_error(raw, best_type, best)
-            gene = self.repo.get_gene(best[0][0])
-            if gene is not None:
-                return gene, best_type
-        self._raise_for_withdrawn_symbol(raw)
-        raise NotFoundError(f"No HGNC record matches '{raw}'.")
 
     def get_gene(self, query: str, mode: str = "compact") -> dict[str, Any]:
         """Return the full gene record for an HGNC ID or symbol (alias/prev aware)."""
         raw = (query or "").strip()
         if not raw:
             raise InvalidInputError("query must be a non-empty symbol or HGNC ID.", field="query")
-        gene, match_type = self._resolve_to_gene(raw)
+        gene, match_type, _ = self._resolve_to_gene(raw)
         record = dict(gene)
         record["requested_query"] = raw
         record["match_type"] = match_type
@@ -344,7 +330,7 @@ class HgncService:
         ``response_mode`` selects the default field set; an explicit ``databases=``
         filter overrides the tier and returns exactly those fields.
         """
-        gene, match_type = self._resolve_to_gene((query or "").strip())
+        gene, match_type, _ = self._resolve_to_gene((query or "").strip())
         wanted = resolve_xref_filter(databases)
         if wanted is None:
             wanted = xref_tier_fields(mode)
@@ -375,19 +361,7 @@ class HgncService:
         val = (value or "").strip()
         if not val:
             raise InvalidInputError("value must be non-empty.", field="value")
-        validate_xref_value(field, val)
-
-        hgnc_ids = self.repo.lookup_by_xref(field, val)  # exact
-        matched_field = field
-        if not hgnc_ids and field in VERSIONED_XREF_FIELDS:
-            hgnc_ids = self.repo.lookup_by_xref_versioned(field, val)
-            if len(hgnc_ids) > 1:
-                raise self._xref_ambiguity(val, hgnc_ids)
-        if not hgnc_ids:
-            matched_field, hgnc_ids = self._mane_fallback(field, val)
-        if not hgnc_ids:
-            raise NotFoundError(f"No HGNC gene with {field}={val}.")
-
+        matched_field, hgnc_ids = self._xref_ids(field, val)
         genes = [self.repo.get_gene(hid) for hid in hgnc_ids]
         summaries = [shape_summary(_brief(g, "current"), mode) for g in genes if g is not None]
         return {
@@ -397,6 +371,20 @@ class HgncService:
             "count": len(summaries),
             "results": summaries,
         }
+
+    def _xref_ids(self, field: str, val: str) -> tuple[str, list[str]]:
+        """``(matched_field, hgnc_ids)`` for a canonical xref field; raises on a miss."""
+        validate_xref_value(field, val)
+        matched_field, hgnc_ids = field, self.repo.lookup_by_xref(field, val)  # exact
+        if not hgnc_ids and field in VERSIONED_XREF_FIELDS:
+            hgnc_ids = self.repo.lookup_by_xref_versioned(field, val)
+            if len(hgnc_ids) > 1:
+                raise self._xref_ambiguity(val, hgnc_ids)
+        if not hgnc_ids:
+            matched_field, hgnc_ids = self._mane_fallback(field, val)
+        if not hgnc_ids:
+            raise NotFoundError(f"No HGNC gene with {field}={val}.")
+        return matched_field, hgnc_ids
 
     def _resolve_xref_source(self, source: str) -> str:
         field = XREF_SOURCE_ALIASES.get((source or "").strip().lower())

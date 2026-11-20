@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from hgnc_link.identifiers import infer_xref_source, looks_like_symbol
+from hgnc_link.identifiers import looks_like_symbol
 from hgnc_link.safe_fields import is_canonical_hgnc_id
 
 
@@ -38,14 +38,6 @@ def default_error_next_commands(
     if tool in ("resolve_symbol", "get_gene"):
         value = str(arguments.get("query", ""))
         if value and looks_like_symbol(value):
-            # infer_xref_source matches on a prefix, so it is gated behind the
-            # anchored symbol grammar above (which forbids whitespace/prose).
-            source = infer_xref_source(value)
-            if source:
-                return [
-                    cmd("resolve_gene_by_xref", source=source, value=value),
-                    cmd("search_genes", query=value),
-                ]
             return [cmd("search_genes", query=value), cmd("get_server_capabilities")]
     if error_code == "upstream_unavailable":
         return [cmd("get_hgnc_diagnostics")]
@@ -70,10 +62,12 @@ def after_resolve(resolution: dict[str, Any]) -> list[dict[str, Any]]:
     hgnc_id = resolution.get("hgnc_id")
     if not is_canonical_hgnc_id(hgnc_id):
         return _search_or_capabilities(str(resolution.get("query", "")))
-    return [
-        cmd("get_gene", query=hgnc_id),
-        cmd("get_gene_cross_references", query=hgnc_id),
-    ]
+    chain = [cmd("get_gene", query=hgnc_id), cmd("get_gene_cross_references", query=hgnc_id)]
+    query = str(resolution.get("query", ""))
+    if resolution.get("match_type") == "hgnc_id" and query.isdigit():
+        # A bare number is read as an HGNC id; offer the NCBI Gene reading explicitly.
+        chain.append(cmd("resolve_gene_by_xref", source="entrez_id", value=query))
+    return chain
 
 
 def after_get_gene(gene: dict[str, Any]) -> list[dict[str, Any]]:
