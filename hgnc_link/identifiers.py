@@ -101,6 +101,6 @@ def infer_xref_source(value: str) -> str | None:
         return "ensembl_gene_id"
     if _REFSEQ_RE.match(text):
         return "refseq"
-    if _UNIPROT_RE.match(text):
+    if _UNIPROT_RE.match(text.upper()):  # accessions are upper-case; accept any case
         return "uniprot"
     return None

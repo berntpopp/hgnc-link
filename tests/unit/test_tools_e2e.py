@@ -218,6 +218,18 @@ async def test_bare_number_says_it_was_read_as_hgnc_id(facade: Any, structured: 
     assert "note" in batch["results"][0]
 
 
+async def test_external_ids_are_case_insensitive(facade: Any, structured: Any) -> None:
+    """Lowercase Ensembl / RefSeq / UniProt ids resolve, singly and in a batch."""
+    lower = {"ensg00000157764": "BRAF", "nm_024426.6": "WT1", "p15056": "BRAF"}
+    for query, symbol in lower.items():
+        payload = structured(await facade.call_tool("resolve_symbol", {"query": query}))
+        assert payload["success"] is True, query
+        assert payload["approved_symbol"] == symbol
+    batch = structured(await facade.call_tool("resolve_symbols_batch", {"queries": list(lower)}))
+    assert [r.get("approved_symbol") for r in batch["results"]] == list(lower.values())
+    assert batch["unresolved_queries"] == []
+
+
 async def test_unknown_ensembl_id_is_not_found_without_xref_hint(
     facade: Any, structured: Any
 ) -> None:
