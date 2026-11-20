@@ -224,6 +224,7 @@ MATCH_TYPES: tuple[str, ...] = (
     NCBI_SYNONYM_MATCH,
     # An external id given to resolve_symbol: the xref field that matched (#133).
     "ensembl_gene_id",
+    "entrez_id",
     "refseq_accession",
     "mane_select",
     "uniprot_ids",

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from hgnc_link.identifiers import infer_xref_source, looks_like_symbol
+from hgnc_link.identifiers import looks_like_symbol
 from hgnc_link.safe_fields import is_canonical_hgnc_id
 
 
@@ -38,15 +38,6 @@ def default_error_next_commands(
     if tool in ("resolve_symbol", "get_gene"):
         value = str(arguments.get("query", ""))
         if value and looks_like_symbol(value):
-            # infer_xref_source matches on a prefix, so it is gated behind the
-            # anchored symbol grammar above (which forbids whitespace/prose).
-            # resolve_symbol already tried the xref lookup itself (#133).
-            source = infer_xref_source(value) if tool == "get_gene" else None
-            if source:
-                return [
-                    cmd("resolve_gene_by_xref", source=source, value=value),
-                    cmd("search_genes", query=value),
-                ]
             return [cmd("search_genes", query=value), cmd("get_server_capabilities")]
     if error_code == "upstream_unavailable":
         return [cmd("get_hgnc_diagnostics")]

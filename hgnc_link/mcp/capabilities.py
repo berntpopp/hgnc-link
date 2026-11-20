@@ -170,7 +170,8 @@ def build_capabilities() -> dict[str, Any]:
             "external id (ensembl/entrez/uniprot/omim) -> resolve_gene_by_xref -> get_gene",
             "free text -> search_genes -> get_gene",
             "gene family -> get_gene_group (by id or name)",
-            "Ensembl gene / RefSeq / UniProt id -> resolve_symbol (match_type names the id type)",
+            "Ensembl gene / RefSeq / UniProt / NCBIGene:<n> id -> resolve_symbol or get_gene "
+            "(match_type names the id type)",
             "many symbols or ids at once (e.g. a list of ENSG ids) -> resolve_symbols_batch",
         ],
         "not_found_contract": (

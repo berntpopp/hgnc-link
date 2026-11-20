@@ -10,11 +10,12 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ### Added
 
-- `resolve_symbol` resolves an Ensembl gene id, RefSeq accession or UniProt accession
-  through the cross-reference index instead of returning `not_found`; `match_type` names
-  the id type that matched (`ensembl_gene_id`, `refseq_accession`, `mane_select`,
-  `uniprot_ids`). A symbol match still wins, and a bare number is still an HGNC id (#133).
-  All three id forms are case-insensitive.
+- `resolve_symbol`, `get_gene` and `get_gene_cross_references` resolve an Ensembl gene id,
+  RefSeq accession, UniProt accession or `NCBIGene:<n>` CURIE through the cross-reference
+  index instead of returning `not_found`; `match_type` names the id type that matched
+  (`ensembl_gene_id`, `entrez_id`, `refseq_accession`, `mane_select`, `uniprot_ids`). A
+  symbol match still wins, and a bare number is still an HGNC id (#133). All id forms are
+  case-insensitive.
 - `resolve_symbols_batch` therefore translates a list of external ids in one call (one
   row per input, each keeping its `query`), and now returns `unresolved_queries`, the
   inputs with no single match (#133).
@@ -27,8 +28,8 @@ All notable changes to hgnc-link are documented here. The format follows
 ### Changed
 
 - An unresolved `resolve_symbols_batch` row no longer carries a `hint` pointing to
-  `resolve_gene_by_xref`, and a `resolve_symbol` miss no longer suggests it in
-  `next_commands`: that lookup has already been tried.
+  `resolve_gene_by_xref`, and a `resolve_symbol` / `get_gene` miss no longer suggests it
+  in `next_commands`: that lookup has already been tried.
 
 ## [2.4.3] - 2026-11-19
 

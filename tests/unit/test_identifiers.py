@@ -48,6 +48,8 @@ def test_infer_xref_source() -> None:
     assert infer_xref_source("ENST00000646891") is None  # transcript: reverse lookup can't match
     assert infer_xref_source("P15056") == "uniprot"
     assert infer_xref_source("p15056") == "uniprot"
+    assert infer_xref_source("NCBIGene:673") == "entrez_id"
+    assert infer_xref_source("NCBIGene:673 x") is None
     assert infer_xref_source("NM_004333") == "refseq"
     assert infer_xref_source("BRAF") is None
     assert infer_xref_source("P53") is None  # too short to be a UniProt accession

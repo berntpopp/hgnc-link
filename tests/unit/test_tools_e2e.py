@@ -236,9 +236,30 @@ async def test_unknown_ensembl_id_is_not_found_without_xref_hint(
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "ENSG00000999999"}))
     assert payload["error_code"] == "not_found"
     tools = [c["tool"] for c in payload["_meta"]["next_commands"]]
-    assert "resolve_gene_by_xref" not in tools  # already tried; get_gene still hints it
+    assert "resolve_gene_by_xref" not in tools  # the xref lookup was already tried
     payload = structured(await facade.call_tool("get_gene", {"query": "ENSG00000999999"}))
-    assert "resolve_gene_by_xref" in [c["tool"] for c in payload["_meta"]["next_commands"]]
+    assert payload["error_code"] == "not_found"
+    assert "resolve_gene_by_xref" not in [c["tool"] for c in payload["_meta"]["next_commands"]]
+
+
+async def test_resolver_family_accepts_the_same_external_ids(facade: Any, structured: Any) -> None:
+    """resolve_symbol, the batch, get_gene and get_gene_cross_references share one path."""
+    for query, match_type in (
+        ("NCBIGene:673", "entrez_id"),
+        ("ENSG00000157764", "ensembl_gene_id"),
+    ):
+        resolved = structured(await facade.call_tool("resolve_symbol", {"query": query}))
+        assert (resolved["approved_symbol"], resolved["match_type"]) == ("BRAF", match_type)
+        assert "note" not in resolved  # only a bare number is flagged
+        for tool in ("get_gene", "get_gene_cross_references"):
+            payload = structured(await facade.call_tool(tool, {"query": query}))
+            assert payload["success"] is True, (tool, query)
+            assert (payload["symbol"], payload["match_type"]) == ("BRAF", match_type)
+    batch = structured(
+        await facade.call_tool("resolve_symbols_batch", {"queries": ["ncbigene:673", "NCBIGene:0"]})
+    )
+    assert batch["results"][0]["approved_symbol"] == "BRAF"
+    assert batch["unresolved_queries"] == ["NCBIGene:0"]
 
 
 async def test_batch_translates_ensembl_ids_and_lists_unmatched(

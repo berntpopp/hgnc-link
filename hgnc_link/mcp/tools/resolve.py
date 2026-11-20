@@ -11,7 +11,7 @@ from hgnc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from hgnc_link.mcp.envelope import McpErrorContext, run_mcp_tool
 from hgnc_link.mcp.next_commands import after_resolve, cmd
 from hgnc_link.mcp.service_adapters import get_hgnc_service
-from hgnc_link.mcp.tools._common import ResponseMode
+from hgnc_link.mcp.tools._common import QueryStr, ResponseMode
 
 if TYPE_CHECKING:
     from fastmcp import FastMCP
@@ -32,14 +32,15 @@ def register_resolve_tools(mcp: FastMCP) -> None:
             "forms) instead of calling this tool per gene. "
             "Accepts a current symbol, a previous (withdrawn) symbol, an alias, an NCBI Gene "
             "synonym HGNC does not list, an HGNC id in either form (HGNC:1100 or "
-            "1100), or an Ensembl gene id (ENSG00000157764), RefSeq accession or UniProt "
-            "accession, case-insensitively. Returns {hgnc_id, approved_symbol, name, status, "
+            "1100), or an Ensembl gene id (ENSG00000157764), RefSeq accession, UniProt "
+            "accession or NCBIGene:<n> CURIE, case-insensitively. Returns {hgnc_id, approved_symbol, name, status, "
             "locus_type, location, match_type (hgnc_id|current|previous|alias|"
-            "ncbi_synonym|ensembl_gene_id|refseq_accession|mane_select|uniprot_ids)}; an "
+            "ncbi_synonym|ensembl_gene_id|entrez_id|refseq_accession|mane_select|uniprot_ids)}; an "
             "id-type match_type names the external id type that matched; location is the "
             "cytogenetic band (chromosome location, e.g. 3p24.3). ncbi_synonym means only "
             "NCBI Gene (not HGNC) knows the symbol, and it ranks below every HGNC match. "
-            "A bare number is always read as an HGNC id, never an NCBI Gene id: the result "
+            "A bare number is always read as an HGNC id, never an NCBI Gene id (write NCBIGene:<n> "
+            "for that): the result "
             "then carries a note, and next_commands offers resolve_gene_by_xref("
             "source='entrez_id'). "
             "An alias or synonym shared by several genes returns an ambiguous_query error with "
@@ -48,16 +49,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         ),
     )
     async def resolve_symbol(
-        query: Annotated[
-            str,
-            Field(
-                description="A gene symbol (current/previous/alias, case-insensitive), an HGNC "
-                "id (HGNC:1100 or 1100; a bare number is always an HGNC id), or an Ensembl "
-                "gene id, RefSeq accession or UniProt accession.",
-                examples=["BRAF", "HGNC:1097", "MLL2", "1100", "ENSG00000157764"],
-            ),
-        ],
-        response_mode: ResponseMode = "compact",
+        query: QueryStr, response_mode: ResponseMode = "compact"
     ) -> dict[str, Any] | ToolResult:
         async def call() -> dict[str, Any]:
             payload = get_hgnc_service().resolve(query, response_mode)
@@ -79,7 +71,7 @@ def register_resolve_tools(mcp: FastMCP) -> None:
         description=(
             "Resolve or translate a batch of gene symbols, HGNC ids and/or external gene ids "
             "in one call (max 200). Accepts Ensembl gene ids (e.g. ENSG00000157764), RefSeq "
-            "accessions and UniProt accessions, so a list of ENSG ids -> HGNC symbols is one "
+            "accessions, UniProt accessions and NCBIGene:<n> CURIEs, so a list of ENSG ids -> HGNC symbols is one "
             "call. Each "
             "entry is resolved exactly like resolve_symbol; an individual miss or "
             "withdrawal never fails the batch (it is marked unresolved / obsolete in that "
@@ -94,8 +86,8 @@ def register_resolve_tools(mcp: FastMCP) -> None:
             list[str],
             Field(
                 max_length=200,
-                description="Gene symbols, HGNC ids and/or Ensembl gene / RefSeq / UniProt "
-                "ids to resolve (max 200).",
+                description="Gene symbols, HGNC ids and/or Ensembl gene / RefSeq / UniProt / "
+                "NCBIGene:<n> ids to resolve (max 200).",
                 examples=[["BRCA1", "TP53", "HGNC:1100"], ["ENSG00000157764", "ENSG00000141510"]],
             ),
         ],

@@ -47,6 +47,8 @@ get_gene_cross_references(query="HGNC:1097")
 **External ID → gene**
 ```
 resolve_symbol(query="ENSG00000157764") → {approved_symbol: BRAF, match_type: ensembl_gene_id}
+resolve_symbol(query="NCBIGene:673")    → {approved_symbol: BRAF, match_type: entrez_id}
+get_gene(query="ENSG00000157764")       → the BRAF record (same forms as resolve_symbol)
 resolve_symbols_batch(queries=["ENSG00000157764","ENSG00000141510","ENSG99999999999"])
 → one row per input (BRAF, TP53, unresolved) + unresolved_queries: [ENSG99999999999]
 resolve_gene_by_xref(source="ensembl_gene_id", value="ENSG00000157764") → BRAF
