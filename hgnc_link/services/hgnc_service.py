@@ -315,10 +315,13 @@ class HgncService:
         if not raw:
             raise InvalidInputError("query must be a non-empty search string.", field="query")
         limit = max(1, min(limit, 200))
-        hits = self.repo.search(raw, limit=limit)
+        hits = self.repo.search(raw, limit=limit + 1)  # one extra row tells if more exist
+        truncated = len(hits) > limit
+        hits = hits[:limit]
         return {
             "query": raw,
             "count": len(hits),
+            "truncated": truncated,
             "results": [shape_summary(h, mode) for h in hits],
         }
 

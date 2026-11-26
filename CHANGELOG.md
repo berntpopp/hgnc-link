@@ -6,6 +6,15 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-26
+
+### Added
+
+- `search_genes` and `get_gene_group` report `_meta.pagination` with `total_count`, `has_more`
+  and `next_cursor` (always `null`), as Response-Envelope Standard v1 §5 asks. `search_genes`
+  does not count its matches, so its `total_count` is `null`; it now returns `truncated`,
+  which is true when more hits exist than `limit`. `get_gene_group` also carries `next_offset`.
+
 ## [3.0.0] - 2026-11-26
 
 Adopts the Response-Envelope Standard v1.2 (#138).

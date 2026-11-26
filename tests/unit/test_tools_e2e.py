@@ -298,3 +298,27 @@ async def test_resolve_description_names_only_returned_fields(facade: Any, struc
     assert {"location", "name", "locus_type"} <= set(named)
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "BRAF"}))
     assert set(named) <= payload["result"].keys()
+
+
+async def test_paged_tools_report_meta_pagination(facade: Any, structured: Any) -> None:
+    """Response-Envelope v1 section 5: total_count, has_more, next_cursor."""
+    one = structured(await facade.call_tool("search_genes", {"query": "gene", "limit": 1}))
+    assert one["truncated"] is True and len(one["results"]) == 1
+    assert one["_meta"]["pagination"] == {
+        "total_count": None,
+        "has_more": True,
+        "next_cursor": None,
+    }
+    every = structured(await facade.call_tool("search_genes", {"query": "gene", "limit": 200}))
+    assert every["_meta"]["pagination"]["has_more"] is False
+    assert len(every["results"]) > 1  # so limit=1 really cut the list
+
+    group = structured(await facade.call_tool("get_gene_group", {"group": "9990", "limit": 1}))
+    assert group["_meta"]["pagination"] == {
+        "total_count": group["result"]["member_count"],
+        "has_more": True,
+        "next_cursor": None,
+        "next_offset": 1,
+    }
+    gene = structured(await facade.call_tool("get_gene", {"query": "TP53"}))
+    assert "pagination" not in gene["_meta"]
