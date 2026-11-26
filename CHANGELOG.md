@@ -19,6 +19,11 @@ Adopts the Response-Envelope Standard v1.2 (#138).
   `result.approved_symbol` instead of `approved_symbol`. The list tools (`results`) and
   error envelopes keep their shape. The output schemas follow.
 
+- The result rows of `search_genes` return `locus_group` only at `response_mode` `standard`
+  and `full` (`locus_type` stays in every mode); the rows of `resolve_gene_by_xref` and
+  `get_gene_group` gain it there. Before, `compact` and `full` returned identical rows
+  unless a field was empty.
+
 ### Added
 
 - Provenance on every successful result: `_meta.source` (`hgnc`), `_meta.data_version`

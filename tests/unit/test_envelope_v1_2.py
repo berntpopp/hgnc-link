@@ -68,3 +68,16 @@ async def test_error_is_a_valid_envelope_without_provenance(facade: Any, structu
         assert envelope["success"] is False
         assert _errors(envelope) == []
         assert "retrieved_at" not in envelope["_meta"]
+
+
+@pytest.mark.parametrize("tool", ["search_genes", "resolve_gene_by_xref", "get_gene_group"])
+async def test_summary_rows_differ_between_compact_and_full(
+    tool: str, facade: Any, structured: Any
+) -> None:
+    """Behaviour Conformance v1: response_mode is not ignored on a row without empty values."""
+    rows = []
+    for mode in ("compact", "full"):
+        call = {**DATA_CALLS[tool], "response_mode": mode}
+        envelope = structured(await facade.call_tool(tool, call))
+        rows.append((envelope.get("results") or envelope["result"]["members"])[0])
+    assert set(rows[1]) - set(rows[0]) == {"locus_group"}
