@@ -131,20 +131,23 @@ def build_capabilities() -> dict[str, Any]:
         },
         "xref_lookup_sources": sorted(set(XREF_SOURCE_ALIASES.values())),
         "provenance_policy": (
-            "Static provenance (citation, HGNC release, full research-use notice "
-            "text) is declared here and applies to ALL tool outputs; it is not "
-            "repeated per-call to conserve context tokens. The clinical-safety "
-            "disclaimer itself is the exception: per the fleet Response-Envelope "
-            "Standard v1, every tool response also stamps "
-            "_meta.unsafe_for_clinical_use: true (success and error, all "
-            "response_modes) so it survives even if this capabilities call was "
-            "never made."
+            "The citation and the full research-use notice text are declared here "
+            "and apply to ALL tool outputs; they are not repeated per-call to "
+            "conserve context tokens. Per the fleet Response-Envelope Standard, "
+            "every tool response stamps _meta.unsafe_for_clinical_use: true "
+            "(success and error, all response_modes), and every success names its "
+            "origin: _meta.source, _meta.data_version (the HGNC release) and "
+            "_meta.retrieved_at (when the local index was built)."
         ),
         "per_call_meta": [
             "tool",
             "request_id",
+            "elapsed_ms",
             "next_commands",
             "unsafe_for_clinical_use",
+            "source",
+            "data_version",
+            "retrieved_at",
         ],
         "id_normalization": "HGNC ids accepted/returned as both 'HGNC:1100' and '1100'.",
         "argument_alias_policy": (

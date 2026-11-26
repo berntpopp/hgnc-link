@@ -93,6 +93,6 @@ async def test_get_gene_full_adds_internal_fields_over_standard(
     full = structured(
         await facade.call_tool("get_gene", {"query": "BRAF", "response_mode": "full"})
     )
-    assert "uuid" in full
-    assert "uuid" not in standard
-    assert set(full) > set(standard)
+    assert "uuid" in full["result"]
+    assert "uuid" not in standard["result"]
+    assert set(full["result"]) > set(standard["result"])

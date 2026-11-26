@@ -104,6 +104,11 @@ def shape_gene(record: dict[str, Any], mode: str) -> dict[str, Any]:
     return out
 
 
+# Summary-row detail only `standard`/`full` return (`locus_type` already says more), so
+# the modes differ on a row without empty values too (Behaviour Conformance v1).
+_SUMMARY_FULL_ONLY: frozenset[str] = frozenset({"locus_group"})
+
+
 def shape_summary(summary: dict[str, Any], mode: str) -> dict[str, Any]:
     """Project a search/resolve summary row to the requested verbosity."""
     if mode == "minimal":
@@ -111,5 +116,9 @@ def shape_summary(summary: dict[str, Any], mode: str) -> dict[str, Any]:
         return {k: v for k, v in summary.items() if k in keep}
     if mode in ("standard", "full"):
         return summary
-    # compact: drop null/empty.
-    return {k: v for k, v in summary.items() if v is not None and v != ""}
+    # compact: drop null/empty and the standard/full-only detail.
+    return {
+        k: v
+        for k, v in summary.items()
+        if k not in _SUMMARY_FULL_ONLY and v is not None and v != ""
+    }

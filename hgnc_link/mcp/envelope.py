@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, Literal, get_args
 
 from fastmcp.tools import ToolResult
@@ -31,6 +33,7 @@ from hgnc_link.exceptions import (
 )
 from hgnc_link.mcp._sanitize import safe_field_name, sanitize_envelope, sanitize_message
 from hgnc_link.mcp.next_commands import cmd, default_error_next_commands, withdrawn_recovery
+from hgnc_link.mcp.service_adapters import get_hgnc_service
 from hgnc_link.safe_fields import (
     safe_allowed_values,
     safe_candidates,
@@ -90,6 +93,28 @@ class McpToolError(Exception):
 
 def _request_id() -> str:
     return uuid.uuid4().hex[:12]
+
+
+def _elapsed_ms(start: float) -> int:
+    return round((time.perf_counter() - start) * 1000)
+
+
+def _provenance() -> dict[str, str]:
+    """Response-Envelope v1.2 provenance of the loaded index, from its ``meta`` row.
+
+    ``retrieved_at`` is the index build time: a build downloads the dumps and indexes
+    them in one step. A release build pins it to the dump's ``Last-Modified`` instead.
+    """
+    try:
+        meta = get_hgnc_service().repo.get_meta()
+    except DataUnavailableError:  # only get_hgnc_diagnostics succeeds without an index
+        return {}
+    built = datetime.fromisoformat(meta["build_utc"]).astimezone(UTC)
+    return {
+        "source": "hgnc",
+        "data_version": meta["release"] or meta["source_last_modified"] or "unknown",
+        "retrieved_at": built.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
 
 
 # FIXED, error-code-specific public messages. The message NEVER interpolates the
@@ -254,6 +279,7 @@ def build_arg_error_envelope(
             "_meta": {
                 "tool": tool_name,
                 "request_id": _request_id(),
+                "elapsed_ms": 0,  # rejected before dispatch
                 "next_commands": [cmd("get_server_capabilities")],
                 "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
             },
@@ -276,17 +302,24 @@ async def run_mcp_tool(
     model for self-correction) while the machine-readable envelope is preserved.
     """
     ctx = context or McpErrorContext(tool_name=tool_name)
+    start = time.perf_counter()
     try:
         result = await call()
         if isinstance(result, dict):
-            result.setdefault("success", True)
-            existing_meta: dict[str, Any] = result.get("_meta") or {}
-            result["_meta"] = {
+            existing_meta: dict[str, Any] = result.pop("_meta", None) or {}
+            success = result.pop("success", True)
+            meta = {
                 **existing_meta,
                 "tool": tool_name,
                 "request_id": _request_id(),
+                "elapsed_ms": _elapsed_ms(start),
                 "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
             }
+            if success:
+                meta.update(_provenance())
+                if not {"result", "results"} & result.keys():
+                    result = {"result": result}  # v1 frame: one record sits under `result`
+            result = {"success": success, **result, "_meta": meta}
             # Code-point backstop over the WHOLE success payload too (curated data
             # is clean, so this is a no-op there; it strips any forbidden code point
             # from a caller-echoed correlation key such as a batch row's `query`).
@@ -299,6 +332,7 @@ async def run_mcp_tool(
         return result
     except Exception as exc:  # broad catch is the error-boundary contract
         envelope = _error_envelope(exc, ctx)
+        envelope["_meta"]["elapsed_ms"] = _elapsed_ms(start)
         logger.warning(
             "mcp_tool_error tool=%s code=%s exc=%s",
             tool_name,

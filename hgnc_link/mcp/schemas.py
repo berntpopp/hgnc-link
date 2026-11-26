@@ -27,8 +27,11 @@ def _envelope(**properties: Any) -> dict[str, Any]:
         "obsolete": {"type": "boolean"},
         "replaced_by": {"type": "array"},
         "candidates": {"type": "array"},
-        **properties,
     }
+    if "results" in properties:  # a list tool: `results` and its counts at the top level
+        props.update(properties)
+    else:  # a single record sits under `result` (Response-Envelope Standard v1)
+        props["result"] = {"type": "object", "additionalProperties": True, "properties": properties}
     return {"type": "object", "additionalProperties": True, "properties": props}
 
 

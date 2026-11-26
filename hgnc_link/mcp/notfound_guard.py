@@ -99,6 +99,7 @@ def unknown_tool_envelope() -> dict[str, Any]:
             "recovery_action": "switch_tool",
             "_meta": {
                 "request_id": _request_id(),
+                "elapsed_ms": 0,  # rejected before dispatch
                 "next_commands": [cmd(_UNKNOWN_TOOL_FALLBACK)],
                 "unsafe_for_clinical_use": _UNSAFE_FOR_CLINICAL_USE,
             },

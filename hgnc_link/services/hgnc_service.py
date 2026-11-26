@@ -363,7 +363,7 @@ class HgncService:
             raise InvalidInputError("value must be non-empty.", field="value")
         matched_field, hgnc_ids = self._xref_ids(field, val)
         genes = [self.repo.get_gene(hid) for hid in hgnc_ids]
-        summaries = [shape_summary(_brief(g, "current"), mode) for g in genes if g is not None]
+        summaries = [shape_summary(_row(g), mode) for g in genes if g is not None]
         return {
             "source": matched_field,
             "source_label": _XREF_LABELS.get(matched_field, matched_field),
@@ -457,7 +457,7 @@ class HgncService:
         member_count = len(hgnc_ids)
         page_ids = hgnc_ids[offset : offset + limit]
         genes = [self.repo.get_gene(hid) for hid in page_ids]
-        members = [shape_summary(_brief(g, "current"), mode) for g in genes if g is not None]
+        members = [shape_summary(_row(g), mode) for g in genes if g is not None]
         truncated = (offset + len(page_ids)) < member_count
         return {
             "group_id": group_id,
@@ -470,6 +470,11 @@ class HgncService:
             "next_offset": (offset + limit) if truncated else None,
             "members": members,
         }
+
+
+def _row(gene: dict[str, Any]) -> dict[str, Any]:
+    """A result row of a gene list: the summary plus what only standard/full return."""
+    return {**_brief(gene, "current"), "locus_group": gene.get("locus_group")}
 
 
 def _brief(gene: dict[str, Any], symbol_type: str) -> dict[str, Any]:
