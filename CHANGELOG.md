@@ -6,6 +6,29 @@ All notable changes to hgnc-link are documented here. The format follows
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-26
+
+Adopts the Response-Envelope Standard v1.2 (#138).
+
+### Changed (BREAKING)
+
+- Every successful result is the standard frame `{success, result | results, _meta}`. A
+  tool that returned one record at the top level (`resolve_symbol`, `get_gene`,
+  `get_gene_cross_references`, `get_gene_group`, `get_server_capabilities`,
+  `get_hgnc_diagnostics`) now returns it unchanged under `result`: read
+  `result.approved_symbol` instead of `approved_symbol`. The list tools (`results`) and
+  error envelopes keep their shape. The output schemas follow.
+
+### Added
+
+- Provenance on every successful result: `_meta.source` (`hgnc`), `_meta.data_version`
+  (the HGNC release the local index was built from) and `_meta.retrieved_at` (RFC 3339
+  UTC build time of that index, when its dumps were fetched).
+- `_meta.elapsed_ms` on every result, success and error.
+- Tests run every data tool against the fixture index and validate each result against
+  the envelope JSON Schema (berntpopp/genefoundry-envelope v1.2.0, vendored with its
+  sha256).
+
 ## [2.5.0] - 2026-11-20
 
 ### Added

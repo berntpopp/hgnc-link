@@ -84,7 +84,8 @@ surface as `hgnc_<tool>` (e.g. `hgnc_resolve_symbol`).
 
 Every response carries `_meta.next_commands` — a ready-to-call `{tool, arguments}` list, on
 success **and** on error — and honours `response_mode ∈ {minimal, compact, standard, full}`
-(default `compact`). See [Usage](docs/usage.md).
+(default `compact`). A success is `{success, result | results, _meta}`; its `_meta` names the
+origin: `source`, `data_version` (the HGNC release) and `retrieved_at`. See [Usage](docs/usage.md).
 
 ## Data & provenance
 

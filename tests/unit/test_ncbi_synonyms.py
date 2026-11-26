@@ -105,10 +105,11 @@ async def test_tools_surface_the_field_match_type_and_provenance(
     facade: Any, structured: Any
 ) -> None:
     gene = structured(await facade.call_tool("get_gene", {"query": "NUTM2G"}))
-    assert gene["ncbi_gene_synonyms"] == ["FAM22G", "NUTMG"]
+    assert gene["result"]["ncbi_gene_synonyms"] == ["FAM22G", "NUTMG"]
 
     resolved = structured(await facade.call_tool("resolve_symbol", {"query": "NUTMG"}))
-    assert resolved["success"] is True and resolved["match_type"] == "ncbi_synonym"
+    assert resolved["success"] is True
+    assert resolved["result"]["match_type"] == "ncbi_synonym"
 
     ambiguous = structured(await facade.call_tool("resolve_symbol", {"query": "NCBIDUP"}))
     assert ambiguous["error_code"] == "ambiguous_query"
@@ -120,9 +121,11 @@ async def test_tools_surface_the_field_match_type_and_provenance(
     assert batch["results"][0]["match_type"] == "ncbi_synonym"
     assert batch["results"][1]["ambiguous"] is True
 
-    diagnostics = structured(await facade.call_tool("get_hgnc_diagnostics", {}))
+    diagnostics = structured(await facade.call_tool("get_hgnc_diagnostics", {}))["result"]
     assert diagnostics["ncbi_gene_info_last_modified"] == "Wed, 18 Nov 2026 11:15:48 GMT"
-    capabilities = structured(await facade.call_tool("get_server_capabilities", {"detail": "full"}))
+    capabilities = structured(
+        await facade.call_tool("get_server_capabilities", {"detail": "full"})
+    )["result"]
     assert "ncbi_synonym" in capabilities["match_types"]
     assert capabilities["ncbi_gene_synonyms"]["source"] == NCBI_GENE_SOURCE
 

@@ -63,8 +63,12 @@ async def test_lean_meta() -> None:
     assert set(out["_meta"]) <= {
         "tool",
         "request_id",
+        "elapsed_ms",
         "next_commands",
         "unsafe_for_clinical_use",
+        "source",
+        "data_version",
+        "retrieved_at",
     }
 
 

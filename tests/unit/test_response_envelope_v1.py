@@ -48,8 +48,8 @@ async def test_success_envelope_is_flat_with_lean_meta() -> None:
     result = await run_mcp_tool("get_gene", call, context=McpErrorContext("get_gene"))
 
     assert result["success"] is True
-    assert result["hgnc_id"] == "HGNC:1097"
-    assert result["symbol"] == "BRAF"
+    assert result["result"]["hgnc_id"] == "HGNC:1097"
+    assert result["result"]["symbol"] == "BRAF"
     assert result["_meta"]["tool"] == "get_gene"
     assert isinstance(result["_meta"]["request_id"], str)
     assert result["_meta"]["request_id"]
@@ -127,6 +127,10 @@ def test_research_use_disclaimer_is_declared_once_in_capabilities() -> None:
     assert caps["per_call_meta"] == [
         "tool",
         "request_id",
+        "elapsed_ms",
         "next_commands",
         "unsafe_for_clinical_use",
+        "source",
+        "data_version",
+        "retrieved_at",
     ]

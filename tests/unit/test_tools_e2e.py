@@ -9,26 +9,26 @@ async def test_capabilities_tool(facade: Any, structured: Any) -> None:
     res = await facade.call_tool("get_server_capabilities", {})
     payload = structured(res)
     assert payload["success"] is True
-    assert payload["tool_count"] == 9
+    assert payload["result"]["tool_count"] == 9
 
 
 async def test_diagnostics_tool(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("get_hgnc_diagnostics", {}))
-    assert payload["data_available"] is True
-    assert payload["gene_count"] == 9
+    assert payload["result"]["data_available"] is True
+    assert payload["result"]["gene_count"] == 9
     assert payload["_meta"]["next_commands"][0]["tool"] == "resolve_symbol"
 
 
 async def test_resolve_tool_success(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "BRAF"}))
-    assert payload["hgnc_id"] == "HGNC:1097"
-    assert payload["match_type"] == "current"
+    assert payload["result"]["hgnc_id"] == "HGNC:1097"
+    assert payload["result"]["match_type"] == "current"
     assert payload["_meta"]["next_commands"][0]["tool"] == "get_gene"
 
 
 async def test_resolve_alias_via_arg_alias(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("resolve_symbol", {"symbol": "BRAF1"}))
-    assert payload["match_type"] == "alias"
+    assert payload["result"]["match_type"] == "alias"
     assert payload["_meta"]["argument_aliases_applied"] == [["symbol", "query"]]
 
 
@@ -43,9 +43,9 @@ async def test_get_gene_modes(facade: Any, structured: Any) -> None:
     full = structured(
         await facade.call_tool("get_gene", {"query": "BRAF", "response_mode": "full"})
     )
-    assert "date_modified" in full
+    assert "date_modified" in full["result"]
     compact = structured(await facade.call_tool("get_gene", {"query": "BRAF"}))
-    assert "date_modified" not in compact
+    assert "date_modified" not in compact["result"]
 
 
 async def test_withdrawn_redirect(facade: Any, structured: Any) -> None:
@@ -69,20 +69,20 @@ async def test_search_tool(facade: Any, structured: Any) -> None:
 
 async def test_cross_references_tool(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("get_gene_cross_references", {"query": "TP53"}))
-    assert "ensembl_gene_id" in payload["cross_references"]
+    assert "ensembl_gene_id" in payload["result"]["cross_references"]
 
 
 async def test_cross_references_compact_includes_high_value(facade: Any, structured: Any) -> None:
     # The finding-#4 fields (MANE/UniProt/OMIM) must be present in the default tier.
     payload = structured(await facade.call_tool("get_gene_cross_references", {"query": "BRAF"}))
-    assert {"mane_select", "uniprot_ids", "omim_id"} <= set(payload["cross_references"])
-    assert payload["response_mode"] == "compact"
+    assert {"mane_select", "uniprot_ids", "omim_id"} <= set(payload["result"]["cross_references"])
+    assert payload["result"]["response_mode"] == "compact"
     full = structured(
         await facade.call_tool(
             "get_gene_cross_references", {"query": "BRAF", "response_mode": "full"}
         )
     )
-    assert payload["database_count"] < full["database_count"]
+    assert payload["result"]["database_count"] < full["result"]["database_count"]
 
 
 async def test_cross_references_unknown_db_envelope(facade: Any, structured: Any) -> None:
@@ -104,8 +104,8 @@ async def test_cross_references_friendly_filter_resolves(facade: Any, structured
         )
     )
     assert payload["success"] is True
-    assert "mane_select" in payload["cross_references"]
-    assert payload["database_count"] == 1
+    assert "mane_select" in payload["result"]["cross_references"]
+    assert payload["result"]["database_count"] == 1
 
 
 async def test_withdrawn_redirect_by_id_form(facade: Any, structured: Any) -> None:
@@ -156,14 +156,14 @@ async def test_bad_response_mode_envelope(facade: Any, structured: Any) -> None:
 
 async def test_gene_group_tool(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("get_gene_group", {"group": "1157"}))
-    assert payload["group_name"] == "RAF family"
-    assert any(m["symbol"] == "BRAF" for m in payload["members"])
+    assert payload["result"]["group_name"] == "RAF family"
+    assert any(m["symbol"] == "BRAF" for m in payload["result"]["members"])
 
 
 async def test_gene_group_pagination_next_command(facade: Any, structured: Any) -> None:
     payload = structured(await facade.call_tool("get_gene_group", {"group": "9990", "limit": 1}))
-    assert payload["truncated"] is True
-    assert payload["next_offset"] == 1
+    assert payload["result"]["truncated"] is True
+    assert payload["result"]["next_offset"] == 1
     nxt = [
         c
         for c in payload["_meta"]["next_commands"]
@@ -184,9 +184,9 @@ async def test_resolve_symbol_accepts_ensembl_gene_id(facade: Any, structured: A
     """#133: an Ensembl gene id resolves through the xref index; match_type names the id type."""
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "ENSG00000157764"}))
     assert payload["success"] is True
-    assert payload["approved_symbol"] == "BRAF"
-    assert payload["match_type"] == "ensembl_gene_id"
-    assert payload["query"] == "ENSG00000157764"
+    assert payload["result"]["approved_symbol"] == "BRAF"
+    assert payload["result"]["match_type"] == "ensembl_gene_id"
+    assert payload["result"]["query"] == "ENSG00000157764"
 
 
 async def test_resolve_description_points_to_batch_right_after_lead(facade: Any) -> None:
@@ -204,15 +204,15 @@ async def test_bare_number_says_it_was_read_as_hgnc_id(facade: Any, structured: 
         payload = structured(
             await facade.call_tool("resolve_symbol", {"query": "1097", "response_mode": mode})
         )
-        assert payload["match_type"] == "hgnc_id"
-        assert "HGNC id, NOT an NCBI Gene id" in payload["note"]
+        assert payload["result"]["match_type"] == "hgnc_id"
+        assert "HGNC id, NOT an NCBI Gene id" in payload["result"]["note"]
         assert payload["_meta"]["next_commands"][-1] == {
             "tool": "resolve_gene_by_xref",
             "arguments": {"source": "entrez_id", "value": "1097"},
         }
     for query in ("HGNC:1097", "BRAF"):  # unambiguous forms carry neither
         payload = structured(await facade.call_tool("resolve_symbol", {"query": query}))
-        assert "note" not in payload
+        assert "note" not in payload["result"]
         assert len(payload["_meta"]["next_commands"]) == 2
     batch = structured(await facade.call_tool("resolve_symbols_batch", {"queries": ["1097"]}))
     assert "note" in batch["results"][0]
@@ -224,7 +224,7 @@ async def test_external_ids_are_case_insensitive(facade: Any, structured: Any) -
     for query, symbol in lower.items():
         payload = structured(await facade.call_tool("resolve_symbol", {"query": query}))
         assert payload["success"] is True, query
-        assert payload["approved_symbol"] == symbol
+        assert payload["result"]["approved_symbol"] == symbol
     batch = structured(await facade.call_tool("resolve_symbols_batch", {"queries": list(lower)}))
     assert [r.get("approved_symbol") for r in batch["results"]] == list(lower.values())
     assert batch["unresolved_queries"] == []
@@ -248,13 +248,16 @@ async def test_resolver_family_accepts_the_same_external_ids(facade: Any, struct
         ("NCBIGene:673", "entrez_id"),
         ("ENSG00000157764", "ensembl_gene_id"),
     ):
-        resolved = structured(await facade.call_tool("resolve_symbol", {"query": query}))
+        resolved = structured(await facade.call_tool("resolve_symbol", {"query": query}))["result"]
         assert (resolved["approved_symbol"], resolved["match_type"]) == ("BRAF", match_type)
         assert "note" not in resolved  # only a bare number is flagged
         for tool in ("get_gene", "get_gene_cross_references"):
             payload = structured(await facade.call_tool(tool, {"query": query}))
             assert payload["success"] is True, (tool, query)
-            assert (payload["symbol"], payload["match_type"]) == ("BRAF", match_type)
+            assert (payload["result"]["symbol"], payload["result"]["match_type"]) == (
+                "BRAF",
+                match_type,
+            )
     batch = structured(
         await facade.call_tool("resolve_symbols_batch", {"queries": ["ncbigene:673", "NCBIGene:0"]})
     )
@@ -294,4 +297,4 @@ async def test_resolve_description_names_only_returned_fields(facade: Any, struc
     named = re.findall(r"(?:^|,)\s*([a-z_]+)", returns.group(1))
     assert {"location", "name", "locus_type"} <= set(named)
     payload = structured(await facade.call_tool("resolve_symbol", {"query": "BRAF"}))
-    assert set(named) <= payload.keys()
+    assert set(named) <= payload["result"].keys()
