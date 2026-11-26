@@ -317,6 +317,18 @@ async def run_mcp_tool(
             }
             if success:
                 meta.update(_provenance())
+                if "truncated" in result:  # paged: Response-Envelope v1 section 5
+                    meta["pagination"] = {
+                        # search does not count its matches: total_count is null there
+                        "total_count": result.get("member_count"),
+                        "has_more": result["truncated"],
+                        "next_cursor": None,  # paging is by offset or a higher limit
+                        **(
+                            {"next_offset": result["next_offset"]}
+                            if "next_offset" in result
+                            else {}
+                        ),
+                    }
                 if not {"result", "results"} & result.keys():
                     result = {"result": result}  # v1 frame: one record sits under `result`
             result = {"success": success, **result, "_meta": meta}
